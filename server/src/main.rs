@@ -901,7 +901,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/v1/sol-balance", get(get_sol_balance))
         .route("/v1/claim", post(post_claim))
         .route("/v1/active-miners", get(get_connected_miners))
-        .route("/v1/timestamp", get(get_timestamp))
+        .route("/timestamp", get(get_timestamp))
         .route("/v1/miner/balance", get(get_miner_balance))
         .route("/v1/stake-multiplier", get(get_stake_multiplier))
         // App RR Database routes

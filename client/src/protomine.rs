@@ -196,9 +196,9 @@ pub async fn protomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
             .send()
             .await
         {
-            Ok(response) => match response.text().await {
-                Ok(ts) =>
-                    match ts.parse::<u64>() {
+            Ok(response) => {
+                match response.text().await {
+                    Ok(ts) => match ts.parse::<u64>() {
                         Ok(timestamp) => timestamp,
                         Err(_) => {
                             eprintln!("Server response body for /timestamp failed to parse, contact admin.");
@@ -206,11 +206,12 @@ pub async fn protomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
                             continue;
                         },
                     },
-                Err(_) => {
-                    eprintln!("Server response body for /timestamp is empty, contact admin.");
-                    tokio::time::sleep(Duration::from_secs(3)).await;
-                    continue;
-                },
+                    Err(_) => {
+                        eprintln!("Server response body for /timestamp is empty, contact admin.");
+                        tokio::time::sleep(Duration::from_secs(3)).await;
+                        continue;
+                    },
+                }
             },
             Err(_) => {
                 eprintln!("Server restarting, trying again in 3 seconds...");
@@ -237,7 +238,7 @@ pub async fn protomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
             .header("Sec-Websocket-Key", generate_key())
             .header("Host", host)
             .header("Upgrade", "websocket")
-            .header("Connection", "upgrade")
+            .header("Connection", "Upgrade")
             .header("Sec-Websocket-Version", "13")
             .header("Authorization", format!("Basic {}", auth))
             .body(())
@@ -361,14 +362,15 @@ pub async fn protomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
             },
             Err(e) => {
                 match e {
-                    tokio_tungstenite::tungstenite::Error::Http(e) =>
+                    tokio_tungstenite::tungstenite::Error::Http(e) => {
                         if let Some(body) = e.body() {
                             eprintln!("Error: {:?}", String::from_utf8_lossy(body));
                         } else {
                             eprintln!("Http Error: {:?}", e);
-                        },
+                        }
+                    },
                     _ => {
-                        eprintln!("Error: {:?}", e);
+                        eprintln!("Other tungstenite Error: {:?}", e);
                     },
                 }
                 tokio::time::sleep(Duration::from_secs(3)).await;

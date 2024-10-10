@@ -166,7 +166,7 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
         )
         .prompt()
         {
-            Ok(confirm) =>
+            Ok(confirm) => {
                 if confirm.trim().eq_ignore_ascii_case("esc") {
                     println!("  Claim canceled.");
                     return;
@@ -174,7 +174,8 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
                 } else {
                     println!("  Claim canceled.");
                     return;
-                },
+                }
+            },
             Err(InquireError::OperationCanceled) => {
                 println!("  Claim operation canceled.");
                 return;
@@ -187,7 +188,7 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
     }
 
     let timestamp = if let Ok(response) =
-        client.get(format!("{}://{}/v1/timestamp", url_prefix, url)).send().await
+        client.get(format!("{}://{}/timestamp", url_prefix, url)).send().await
     {
         if let Ok(ts) = response.text().await {
             if let Ok(ts) = ts.parse::<u64>() {
@@ -239,7 +240,7 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
             "QUEUED" => {
                 println!("  Claim is already queued for processing.");
             },
-            other =>
+            other => {
                 if let Ok(time) = other.parse::<u64>() {
                     let time_left = 1800 - time;
                     let secs = time_left % 60;
@@ -250,7 +251,8 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
                     );
                 } else {
                     println!("  Unexpected response: {}", other);
-                },
+                }
+            },
         },
         Err(e) => {
             println!("  ERROR: {}", e);
