@@ -78,12 +78,17 @@ pub enum DatabaseError {
 /// Utility function for simply mapping any underline db error to DatabaseError
 impl From<PgError> for DatabaseError {
     fn from(e: PgError) -> Self {
-        match e.code().unwrap() {
-            &SqlState::NO_DATA_FOUND => {
+        match e.code() {
+            // MI: for query_one(), tokio_postgres returns 0 or more than 1 rows result as Error::RowCount with cause None
+            None => {
+                warn!(target: "server_log", "query_one() returned no rows.");
+                DatabaseError::QueryFailed
+            },
+            Some(&SqlState::NO_DATA_FOUND) => {
                 warn!(target: "server_log", "Query returned no rows.");
                 DatabaseError::QueryFailed
             },
-            err_code => {
+            Some(err_code) => {
                 error!(target: "server_log", "Query error: {:?}", err_code);
                 DatabaseError::QueryFailed
             },
@@ -185,6 +190,21 @@ pub async fn validate_dbms(dbms_settings: &mut PoweredByParams<'_>, database: Da
         dbms_settings.initialized = true;
     }
 
+    // match conn.query_opt(check_init_sql, &[]).await {
+    //     // more than 1 rows returned
+    //     Err(e) => {
+    //         error!(target: "server_log", "ore pool db has not been initialized: {}", e);
+    //         dbms_settings.initialized = false;
+    //     },
+    //     // None for no rows
+    //     Ok(None) => {
+    //         error!(target: "server_log", "Not found init_completion table. ore pool db has not been initialized.");
+    //         dbms_settings.initialized = false;
+    //     },
+    //     // Found exact one
+    //     Ok(_) => dbms_settings.initialized = true,
+    // }
+
     if !dbms_settings.initialized {
         info!(target: "server_log", "Initializing database...");
         // execute db init sql scripts
@@ -209,6 +229,23 @@ pub async fn validate_dbms(dbms_settings: &mut PoweredByParams<'_>, database: Da
         return false;
     }
     dbms_settings.corrupted = false;
+
+    // match conn.query_opt(check_comp_flag_sql, &[]).await {
+    //     // more than 1 rows returned
+    //     Err(e) => {
+    //         error!(target: "server_log", "ore pool db corrupted: {}", e);
+    //         dbms_settings.corrupted = true;
+    //         return false;
+    //     },
+    //     // None for no rows
+    //     Ok(None) => {
+    //         error!(target: "server_log", "No rows found. ore pool db corrupted.");
+    //         dbms_settings.corrupted = true;
+    //         return false;
+    //     },
+    //     // Found exact one
+    //     Ok(_) => dbms_settings.corrupted = false,
+    // }
 
     true
 }
