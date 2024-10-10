@@ -108,7 +108,7 @@ CREATE TABLE members (
     total_balance INT NOT NULL,
     is_approved BOOLEAN NOT NULL,
     is_kyc BOOLEAN NOT NULL,
-    is_synced BOOLEAN NOT NULL
+    is_synced BOOLEAN NOT NULL,
     is_operator BOOLEAN DEFAULT false NOT NULL,
     status VARCHAR(30) DEFAULT 'Enrolled' NOT NULL,
     created TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
