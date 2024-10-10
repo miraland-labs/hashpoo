@@ -211,7 +211,8 @@ pub async fn validate_dbms(dbms_settings: &mut PoweredByParams<'_>, database: Da
         // let command = fs::read_to_string("migrations/postgres/init.sql").unwrap();
         let init_sql = include_str!("../migrations/postgres/init.sql");
         let tx = conn.transaction().await.unwrap();
-        if let Err(e) = tx.execute(init_sql, &[]).await {
+        // if let Err(e) = tx.execute(init_sql, &[]).await {
+        if let Err(e) = tx.batch_execute(init_sql).await {
             error!(target: "server_log", "Error occurred during db initialization: {}", e);
             return false;
         }
