@@ -173,7 +173,6 @@ EXECUTE FUNCTION update_timestamp();
 -- CREATE UNIQUE INDEX uniq_members_address ON members (address ASC);
 CREATE UNIQUE INDEX uniq_members_id ON members (id ASC);
 CREATE UNIQUE INDEX uniq_members_authority_pool_address ON members (authority ASC, pool_address ASC);
-CREATE INDEX indx_pools_authority_pubkey ON pools (authority_pubkey ASC);
 
 
 /*

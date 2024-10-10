@@ -184,7 +184,9 @@ pub async fn validate_dbms(dbms_settings: &mut PoweredByParams<'_>, database: Da
     let check_init_sql =
         "SELECT 1 FROM information_schema.tables WHERE table_name = 'init_completion'";
     if let Err(e) = conn.query_one(check_init_sql, &[]).await {
-        warn!(target: "server_log", "ore pool db has not been initialized: {}", e);
+        // warn!(target: "server_log", "ore pool db has not been initialized: {}", e);
+        warn!(target: "server_log", "ore pool db has not been initialized.");
+        // info!(target: "server_log", "Prepare initializing...");
         dbms_settings.initialized = false;
     } else {
         dbms_settings.initialized = true;
