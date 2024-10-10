@@ -1657,7 +1657,7 @@ SELECT
         let sql = r#"
 SELECT
         m.pubkey                                      as miner_pubkey,
-        COUNT(c.id)                                   as num_of_contributions,
+        COUNT(c.id)::int                              as num_of_contributions,
         MIN(c.difficulty)                             as min_diff,
         ROUND(AVG(c.difficulty)::numeric, 2)          as avg_diff,
         MAX(c.difficulty)                             as max_diff,
