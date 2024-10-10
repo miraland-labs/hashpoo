@@ -1,0 +1,8 @@
+.DS_Store
+.env
+/bin
+/scripts
+/target
+keypair_list
+/logs
+client.db.sqlite3

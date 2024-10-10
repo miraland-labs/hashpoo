@@ -1,0 +1,88 @@
+[package]
+name = "poolore-srv"
+description = "ORE mining public pool server."
+documentation = { workspace = true }
+version = { workspace = true }
+authors = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+edition = { workspace = true }
+readme = "./README.md"
+
+[[bin]]
+name = "poolores"
+path = "src/main.rs"
+
+[features]
+default = ["powered-by-dbms-postgres"]
+powered-by-dbms-postgres = [
+    "dep:deadpool-postgres",
+    "dep:tokio-postgres",
+    "dep:rustls",
+    "dep:rustls-pemfile",
+    "dep:tokio-postgres-rustls",
+]
+powered-by-dbms-sqlite = ["dep:deadpool-sqlite", "dep:rusqlite"]
+
+[dependencies]
+axum = { workspace = true, features = ["macros", "ws"] }
+axum-extra = { workspace = true, features = ["typed-header"] }
+base64 = { workspace = true }
+bincode = { workspace = true }
+bitflags = { workspace = true }
+cached = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+color-eyre = { workspace = true }
+deadpool-sqlite = { workspace = true, optional = true }
+deadpool-postgres = { workspace = true, features = ["serde"], optional = true }
+config = { workspace = true }
+dotenvy = { workspace = true }
+drillx = { workspace = true }
+futures = { workspace = true }
+futures-util = { workspace = true, default-features = false, features = [
+    "sink",
+    "std",
+] }
+ore-api = { workspace = true }
+# ore-pool-api = { workspace = true }
+# ore-pool-types = { workspace = true }
+ore-utils = { workspace = true }
+pg-connection-string = { workspace = true }
+rand = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
+rodio = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+solana-account-decoder = { workspace = true }
+solana-client = { workspace = true }
+solana-rpc-client = { workspace = true }
+solana-program = { workspace = true }
+solana-sdk = { workspace = true }
+solana-transaction-status = { workspace = true }
+spl-associated-token-account = { workspace = true, features = [
+    "no-entrypoint",
+] }
+spl-token = { workspace = true, features = ["no-entrypoint"] }
+tokio = { workspace = true, features = ["full", "rt-multi-thread"] }
+tower = { workspace = true, features = ["util"] }
+tower-http = { workspace = true, features = ["trace", "cors"] }
+tracing = { workspace = true }
+tracing-appender = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+url = { workspace = true }
+slack-messaging = { workspace = true }
+serenity = { workspace = true, default-features = false, features = [
+    "rustls_backend",
+    "model",
+] }
+zeroize = { workspace = true }
+rusqlite = { workspace = true, features = ["bundled"], optional = true }
+tokio-postgres = { workspace = true, features = [
+    "with-chrono-0_4",
+], optional = true }
+tokio-postgres-rustls = { workspace = true, optional = true }
+rustls = { workspace = true, optional = true }
+rustls-pemfile = { workspace = true, optional = true }
+uuid = { workspace = true, features = ["v4"] }

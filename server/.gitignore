@@ -1,0 +1,7 @@
+.DS_Store
+/bin
+/scripts
+/target
+/logs
+.env
+ore_priv_pool.db.sqlite3
