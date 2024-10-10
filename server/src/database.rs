@@ -1659,7 +1659,7 @@ SELECT
         m.pubkey                                      as miner_pubkey,
         COUNT(c.id)::int                              as num_of_contributions,
         MIN(c.difficulty)                             as min_diff,
-        ROUND(AVG(c.difficulty)::numeric, 2)          as avg_diff,
+        ROUND(AVG(c.difficulty)::numeric, 2)::float8  as avg_diff,
         MAX(c.difficulty)                             as max_diff,
         SUM(e.amount)                                 as earning_sub_total,
         ROUND((SUM(e.amount) / SUM(SUM(e.amount)) OVER () * 100)::numeric, 2) AS percent
