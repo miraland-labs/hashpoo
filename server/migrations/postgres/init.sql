@@ -27,6 +27,9 @@ DROP SCHEMA IF EXISTS poolore;
 CREATE SCHEMA IF NOT EXISTS poolore AUTHORIZATION miracle;
 */
 
+DO $$
+BEGIN
+
 DROP TRIGGER IF EXISTS update_timestamp_trigger ON miners CASCADE;
 DROP TRIGGER IF EXISTS update_timestamp_trigger ON pools CASCADE;
 DROP TRIGGER IF EXISTS update_timestamp_trigger ON challenges CASCADE;
@@ -350,3 +353,7 @@ FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 
 INSERT INTO init_completion (init_completed) VALUES (true);
+
+
+END
+$$;
