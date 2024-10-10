@@ -206,7 +206,7 @@ CREATE UNIQUE INDEX indx_pools_authority_pubkey ON pools (authority_pubkey ASC);
 CREATE TABLE challenges (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     pool_id INT NOT NULL,
-    contribution_id INT,
+    contribution_id BIGINT,
     challenge BYTEA NOT NULL,
     rewards_earned BIGINT DEFAULT 0,
     created TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -269,7 +269,7 @@ CREATE TABLE transactions (
   signature VARCHAR(200) NOT NULL,
   priority_fee INT DEFAULT 0 NOT NULL,
   pool_id INT,
-  miner_id INT,
+  miner_id BIGINT,
   created TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
   updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
