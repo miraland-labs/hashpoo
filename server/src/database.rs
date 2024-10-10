@@ -1661,8 +1661,8 @@ SELECT
         MIN(c.difficulty)                             as min_diff,
         ROUND(AVG(c.difficulty)::numeric, 2)::float8  as avg_diff,
         MAX(c.difficulty)                             as max_diff,
-        SUM(e.amount)                                 as earning_sub_total,
-        ROUND((SUM(e.amount) / SUM(SUM(e.amount)) OVER () * 100)::numeric, 2) AS percent
+        SUM(e.amount)::bigint                         as earning_sub_total,
+        ROUND((SUM(e.amount) / SUM(SUM(e.amount)) OVER () * 100)::numeric, 2)::float8 AS percent
     FROM
         contributions c
             INNER JOIN miners m ON c.miner_id = m.id
