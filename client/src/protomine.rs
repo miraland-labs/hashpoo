@@ -181,15 +181,15 @@ pub async fn protomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
     loop {
         let base_url = url.clone();
         let mut ws_url_str =
-            if unsecure { format!("ws://{}", url) } else { format!("wss://{}", url) };
+            if unsecure { format!("ws://{}/v1/ws", url) } else { format!("wss://{}/v1/ws", url) };
 
-        if !ws_url_str.ends_with('/') {
-            ws_url_str.push('/');
-        }
+        // if !ws_url_str.ends_with('/') {
+        //     ws_url_str.push('/');
+        // }
 
         let client = reqwest::Client::new();
 
-        let http_prefix = if unsecure { "http" } else { "https" };
+        let http_prefix = if unsecure { "http".to_string() } else { "https".to_string() };
 
         let timestamp = match client
             .get(format!("{}://{}/timestamp", http_prefix, base_url))
@@ -238,7 +238,7 @@ pub async fn protomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
             .header("Sec-Websocket-Key", generate_key())
             .header("Host", host)
             .header("Upgrade", "websocket")
-            .header("Connection", "Upgrade")
+            .header("Connection", "upgrade")
             .header("Sec-Websocket-Version", "13")
             .header("Authorization", format!("Basic {}", auth))
             .body(())
