@@ -189,7 +189,7 @@ pub async fn validate_dbms(dbms_settings: &mut PoweredByParams<'_>, database: Da
         info!(target: "server_log", "Initializing database...");
         // execute db init sql scripts
         // let command = fs::read_to_string("migrations/postgres/init.sql").unwrap();
-        let init_sql = include_str!("../migrations/sqlite/init.sql");
+        let init_sql = include_str!("../migrations/postgres/init.sql");
         let tx = conn.transaction().await.unwrap();
         if let Err(e) = tx.execute(init_sql, &[]).await {
             error!(target: "server_log", "Error occurred during db initialization: {}", e);
@@ -202,7 +202,7 @@ pub async fn validate_dbms(dbms_settings: &mut PoweredByParams<'_>, database: Da
     }
 
     // retrive initialization completed flag
-    let check_comp_flag_sql = "SELECT id FROM ore.init_completion WHERE init_completed = true";
+    let check_comp_flag_sql = "SELECT id FROM init_completion WHERE init_completed = true";
     if let Err(e) = conn.query_one(check_comp_flag_sql, &[]).await {
         error!(target: "server_log", "ore pool db corrupted. {}", e);
         dbms_settings.corrupted = true;

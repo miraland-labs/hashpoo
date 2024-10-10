@@ -100,7 +100,7 @@ CREATE UNIQUE INDEX uniq_miners_pubkey ON miners (pubkey ASC);
     pool_address: pool_pda(authority, ore_pool_api::id())
     total_balance: accrued rewards
 */
-CREATE TABLE ore.members (
+CREATE TABLE members (
     address VARCHAR PRIMARY KEY,
     id INT NOT NULL,
     authority VARCHAR(44) NOT NULL,
@@ -125,9 +125,9 @@ BEGIN
 END;
 
 -- primary key index implicitly created
--- CREATE UNIQUE INDEX uniq_members_address ON ore.members (address ASC);
-CREATE UNIQUE INDEX uniq_members_id ON ore.members (id ASC);
-CREATE UNIQUE INDEX uniq_members_authority_pool_address ON ore.members (authority ASC, pool_address ASC);
+-- CREATE UNIQUE INDEX uniq_members_address ON members (address ASC);
+CREATE UNIQUE INDEX uniq_members_id ON members (id ASC);
+CREATE UNIQUE INDEX uniq_members_authority_pool_address ON members (authority ASC, pool_address ASC);
 
 
 /*
@@ -156,7 +156,7 @@ BEGIN
     WHERE id = OLD.id;
 END;
 
-CREATE UNIQUE INDEX uniq_pools_pool_pubkey ON ore.pools (pool_pubkey ASC);
+CREATE UNIQUE INDEX uniq_pools_pool_pubkey ON pools (pool_pubkey ASC);
 CREATE UNIQUE INDEX uniq_pools_proof_pubkey ON pools (proof_pubkey ASC);
 CREATE UNIQUE INDEX indx_pools_authority_pubkey ON pools (authority_pubkey ASC);
 

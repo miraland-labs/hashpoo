@@ -22,9 +22,10 @@
 */
 
 -- CREATE DATABASE miraland;
-DROP SCHEMA IF EXISTS ore;
-CREATE SCHEMA IF NOT EXISTS ore AUTHORIZATION miracle;
-
+/*
+DROP SCHEMA IF EXISTS poolore;
+CREATE SCHEMA IF NOT EXISTS poolore AUTHORIZATION miracle;
+*/
 
 DROP TRIGGER IF EXISTS update_timestamp_trigger ON miners CASCADE;
 DROP TRIGGER IF EXISTS update_timestamp_trigger ON pools CASCADE;
