@@ -83,7 +83,7 @@ pub struct InsertTransaction {
 pub struct Challenge {
     pub id: i64,
     pub pool_id: i32,
-    pub contribution_id: Option<i32>,
+    pub contribution_id: Option<i64>,
     pub challenge: Vec<u8>,
     pub rewards_earned: Option<i64>,
 }

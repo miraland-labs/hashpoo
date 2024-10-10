@@ -183,7 +183,7 @@ pub async fn validate_dbms(dbms_settings: &mut PoweredByParams<'_>, database: Da
     // initialization check
     let check_init_sql =
         "SELECT 1 FROM information_schema.tables WHERE table_name = 'init_completion'";
-    if let Err(e) = conn.query_one(check_init_sql, &[]).await {
+    if let Err(_) = conn.query_one(check_init_sql, &[]).await {
         // warn!(target: "server_log", "ore pool db has not been initialized: {}", e);
         warn!(target: "server_log", "ore pool db has not been initialized.");
         // info!(target: "server_log", "Prepare initializing...");
@@ -1659,18 +1659,18 @@ SELECT
         m.pubkey                                      as miner_pubkey,
         COUNT(c.id)                                   as num_of_contributions,
         MIN(c.difficulty)                             as min_diff,
-        ROUND(CAST(AVG(c.difficulty) AS REAL), 2)     as avg_diff,
+        ROUND(AVG(c.difficulty)::numeric, 2)          as avg_diff,
         MAX(c.difficulty)                             as max_diff,
         SUM(e.amount)                                 as earning_sub_total,
-        ROUND(CAST(SUM(e.amount) AS REAL) / CAST(SUM(SUM(e.amount)) OVER () AS REAL) * 100, 2) AS percent
+        ROUND((SUM(e.amount) / SUM(SUM(e.amount)) OVER () * 100)::numeric, 2) AS percent
     FROM
         contributions c
             INNER JOIN miners m ON c.miner_id = m.id
             INNER JOIN earnings e ON c.challenge_id = e.challenge_id AND c.miner_id = e.miner_id AND e.pool_id = $1
             INNER JOIN pools p ON e.pool_id = p.id
     WHERE
-        c.created >= datetime('now', '-24 hour') and
-        c.created < 'now' and
+        c.created >= NOW() - INTERVAL '24 hour' AND
+        c.created < NOW() AND
         m.enabled = true
     GROUP BY m.pubkey
     ORDER BY percent DESC
