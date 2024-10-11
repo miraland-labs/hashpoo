@@ -58,7 +58,8 @@ ore-boost-api = "0.1.0"
 ore-pool-api = { path = "api", version = "0.1.0" }
 ore-pool-types = { path = "types", package = "types" }
 ore-utils = { features = ["spl"], version = "2.1.9" }
-pg-connection-string = "0.0.2"
+# pg-connection-string = "0.0.2"
+postgres-conn-str = "0.1.1"
 # postgres-types = { featuers = ["derive"], version = "0.2.6" }
 postgres-types = { version = "0.2.6" }
 qrcode = "0.14.1"

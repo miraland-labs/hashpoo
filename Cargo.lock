@@ -3771,17 +3771,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pg-connection-string"
-version = "0.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb070c9ccf994a4b3367ebf25bbd734005b1e4f51c3f2b3109ffdc33fb3968ad"
-dependencies = [
- "anyhow",
- "nom",
- "tracing",
-]
-
-[[package]]
 name = "phf"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3925,7 +3914,7 @@ dependencies = [
  "miraland-deadpool-sqlite",
  "ore-api",
  "ore-utils",
- "pg-connection-string",
+ "postgres-conn-str",
  "rand 0.8.5",
  "reqwest",
  "rodio",
@@ -3962,6 +3951,17 @@ name = "portable-atomic"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da544ee218f0d287a911e9c99a39a8c9bc8fcad3cb8db5959940044ecfc67265"
+
+[[package]]
+name = "postgres-conn-str"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "331ca07502c41ee24b3b66be26e9f0714c706ad67bd148463376c039e4f6b7c0"
+dependencies = [
+ "anyhow",
+ "nom",
+ "tracing",
+]
 
 [[package]]
 name = "postgres-protocol"

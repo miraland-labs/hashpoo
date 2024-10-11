@@ -6,7 +6,7 @@ use {
         ChallengeWithDifficulty, Contribution, ContributionWithPubkey,
     },
     deadpool_postgres::{Client, Config, ManagerConfig, Pool, RecyclingMethod, Runtime},
-    pg_connection_string::{from_multi_str, ConnectionString},
+    postgres_conn_str::{from_multi_str, ConnectionString},
     rustls::{Certificate, ClientConfig as RustlsClientConfig},
     std::{fs::File, io::BufReader},
     tokio_postgres::NoTls,

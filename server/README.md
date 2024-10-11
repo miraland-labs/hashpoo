@@ -8,9 +8,9 @@
 
 **Fully embrace and leverage ORE program**
 
-**No additional on-chain delegating or staking program(s)**
+**No sign up fee, no sign up action**
 
-**No sign up fee, no sign up action, no staking.**
+**No delegating operation, no manual staking**
 
 **Start mining when you connect. Stop mining when you disconnect.**
 

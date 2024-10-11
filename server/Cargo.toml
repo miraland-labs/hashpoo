@@ -49,7 +49,8 @@ ore-api = { workspace = true }
 # ore-pool-api = { workspace = true }
 # ore-pool-types = { workspace = true }
 ore-utils = { workspace = true }
-pg-connection-string = { workspace = true }
+# pg-connection-string = { workspace = true }
+postgres-conn-str = { workspace = true }
 rand = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }
 rodio = { workspace = true }
