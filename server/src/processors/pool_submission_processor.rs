@@ -29,6 +29,7 @@ use {
     solana_transaction_status::UiTransactionEncoding,
     std::{
         collections::HashMap,
+        ops::Mul,
         str::FromStr,
         sync::{atomic::Ordering::Relaxed, Arc},
         time::{Duration, SystemTime, UNIX_EPOCH},
@@ -128,6 +129,9 @@ pub async fn pool_submission_processor<'a>(
                         // reset waiting times
                         num_waiting = 0;
                     }
+
+                    // Freeze contributions snapshot, all after-coming contribution updates are ignored.
+                    let contributions = { app_epoch_hashes.read().await.contributions.clone() };
 
                     // set mining pause flag before submitting best solution
                     info!(target: "server_log", "pause new mining mission for pool submission.");
@@ -491,15 +495,28 @@ pub async fn pool_submission_processor<'a>(
                                         let latest_proof = lock.clone();
                                         drop(lock);
 
+                                        // Once proof(hash) updated, rewards should be updated. Proof change are detected via 2 ways:
+                                        // a) active rpc call
+                                        // b) passive proof subscription via websocket
+
+                                        // proof basic concepts:
+                                        // proof is the application level contents mapping of (mini) pool proof account on-chain
+                                        // old_proof is the proof snapshot at the beginning of each loop iteration
+                                        // app_proof is proof mutex lock
+                                        // latest_proof(here) is a proof copy and need sync with proof ASAP
+                                        // if proof on-chain changed/updated, app_proof and latest_proof should be updated with the new proof
+                                        // proof subscription/tracking will automatically update/sync application level app_proof with on-chain proof
+                                        // proof change detected by rpc call needs manually update/sync to app_proof
+
                                         if old_proof.challenge.eq(&latest_proof.challenge) {
+                                            // old proof is still latest proof
                                             info!(target: "server_log", "Proof challenge not updated yet..");
                                             num_checking += 1;
                                             if num_checking >= CHECK_LIMIT {
                                                 warn!(target: "server_log", "No challenge update detected after {CHECK_LIMIT} checkpoints. No more waiting, just keep going...");
                                                 break;
                                             }
-                                            // also check from rpc call along with proof
-                                            // notification subscription
+                                            // a) active rpc call to fetch on-chain proof
                                             if let Ok(p) = get_mini_pool_proof(
                                                 &rpc_client,
                                                 app_wallet.miner_wallet.pubkey(),
@@ -514,348 +531,877 @@ pub async fn pool_submission_processor<'a>(
                                                     "RPC PROOF CHALLENGE: {}",
                                                     BASE64_STANDARD.encode(p.challenge)
                                                 );
+
                                                 if old_proof.challenge.ne(&p.challenge) {
-                                                    info!(target: "server_log", "Found new proof from rpc call other than websocket...");
+                                                    // proof on-chain has changed
+                                                    info!(target: "server_log", "Found new proof from rpc call other than websocket.");
+
+                                                    // explicitly refresh/sync app_proof with newest proof on-chain
                                                     let mut lock = app_proof.lock().await;
                                                     *lock = p;
                                                     drop(lock);
 
-                                                    info!(target: "server_log", "Checking rewards earned.");
-                                                    let lock = app_proof.lock().await;
-                                                    let latest_proof = lock.clone();
-                                                    drop(lock);
-                                                    let balance = (latest_proof.balance as f64)
-                                                        / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
-                                                    info!(target: "server_log", "New balance: {}", balance);
+                                                    // // refresh/sync latest_proof with app_proof
+                                                    // let lock = app_proof.lock().await;
+                                                    // let latest_proof = lock.clone();
+                                                    // drop(lock);
 
-                                                    let multiplier =
-                                                        if let Some(config) = ore_config {
-                                                            if config.top_balance > 0 {
-                                                                1.0 + (latest_proof.balance as f64
-                                                                    / config.top_balance as f64)
-                                                                    .min(1.0f64)
-                                                            } else {
-                                                                1.0f64
-                                                            }
-                                                        } else {
-                                                            1.0f64
-                                                        };
-                                                    info!(target: "server_log", "Multiplier: {}", multiplier);
+                                                    // // Process rewards in 3 steps
+                                                    // info!(target: "server_log", "Checking rewards earned.");
+                                                    // let mut submission_challenge_id = i64::MAX;
 
-                                                    let rewards = (latest_proof.balance
-                                                        - old_proof.balance)
-                                                        as i64;
-                                                    let dec_rewards = (rewards as f64)
-                                                        / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
-                                                    info!(target: "server_log", "Earned: {} ORE", dec_rewards);
+                                                    // // Rewards processing step I: calc. balances, commissions and write logs
+                                                    // let balance = (latest_proof.balance as f64)
+                                                    //     / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
+                                                    // info!(target: "server_log", "New balance: {}", balance);
 
-                                                    // reset nonce and epoch_hashes
-                                                    info!(target: "server_log", "reset nonce and epoch hashes");
-                                                    // reset nonce
-                                                    {
-                                                        let mut nonce = app_nonce.lock().await;
-                                                        *nonce = 0;
-                                                    }
-                                                    // reset epoch hashes
-                                                    {
-                                                        let mut mut_epoch_hashes =
-                                                            app_epoch_hashes.write().await;
-                                                        mut_epoch_hashes.challenge = p.challenge;
-                                                        mut_epoch_hashes.best_hash.solution = None;
-                                                        mut_epoch_hashes.best_hash.difficulty = 0;
-                                                        mut_epoch_hashes.contributions =
-                                                            HashMap::new();
-                                                    }
+                                                    // let multiplier =
+                                                    //     if let Some(config) = ore_config {
+                                                    //         if config.top_balance > 0 {
+                                                    //             1.0 + (latest_proof.balance as f64
+                                                    //                 / config.top_balance as f64)
+                                                    //                 .min(1.0f64)
+                                                    //         } else {
+                                                    //             1.0f64
+                                                    //         }
+                                                    //     } else {
+                                                    //         1.0f64
+                                                    //     };
+                                                    // info!(target: "server_log", "Multiplier: {}", multiplier);
 
-                                                    // unset mining pause flag to start new mining
-                                                    // mission
-                                                    info!(target: "server_log", "resume new mining mission");
-                                                    PAUSED.store(false, Relaxed);
+                                                    // let pool_rewards = (latest_proof.balance
+                                                    //     - old_proof.balance)
+                                                    //     as i64;
+                                                    // let commissions =
+                                                    //     pool_rewards.mul(5).saturating_div(100);
+                                                    // let miners_rewards = pool_rewards - commissions;
 
-                                                    // Mission completed, send signal to tx sender
-                                                    let _ = mission_completed_sender.send(0);
+                                                    // let dec_pool_rewards = (pool_rewards as f64)
+                                                    //     / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
+                                                    // let dec_miners_rewards = (miners_rewards
+                                                    //     as f64)
+                                                    //     / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
+                                                    // let dec_commissions = (commissions as f64)
+                                                    //     / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
 
-                                                    let powered_by_dbms =
-                                                        POWERED_BY_DBMS.get_or_init(|| {
-                                                        let key = "POWERED_BY_DBMS";
-                                                        match std::env::var(key) {
-                                                            Ok(val) => {
-                                                                PoweredByDbms::from_str(&val).expect("POWERED_BY_DBMS must be set correctly.")
-                                                            },
-                                                            Err(_) => PoweredByDbms::Unavailable,
-                                                        }
-                                                    });
-                                                    if powered_by_dbms == &PoweredByDbms::Postgres
-                                                        || powered_by_dbms == &PoweredByDbms::Sqlite
-                                                    {
-                                                        info!(target: "server_log", "Adding new challenge record to db");
-                                                        let new_challenge =
-                                                            models::InsertChallenge {
-                                                                pool_id: mine_config.pool_id,
-                                                                challenge: latest_proof
-                                                                    .challenge
-                                                                    .to_vec(),
-                                                                rewards_earned: None,
-                                                            };
+                                                    // info!(target: "server_log", "Pool Rewards: {} ORE", dec_pool_rewards);
+                                                    // info!(target: "server_log", "Miners Rewards: {} ORE", dec_miners_rewards);
+                                                    // info!(target: "server_log", "Commission: {} ORE", dec_commissions);
 
-                                                        while let Err(_) = database
-                                                            .add_new_challenge(
-                                                                new_challenge.clone(),
-                                                            )
-                                                            .await
-                                                        {
-                                                            error!(target: "server_log", "Failed to add new challenge record to db.");
-                                                            info!(target: "server_log", "Check if the new challenge already exists in db.");
-                                                            if let Ok(_) = database
-                                                                .get_challenge_by_challenge(
-                                                                    new_challenge.challenge.clone(),
-                                                                )
-                                                                .await
-                                                            {
-                                                                info!(target: "server_log", "Challenge already exists, continuing");
-                                                                break;
-                                                            }
+                                                    // // Rewards processing step II: if powered by dbms, do database crud routines.
+                                                    // let powered_by_dbms = POWERED_BY_DBMS.get_or_init(|| {
+                                                    //     let key = "POWERED_BY_DBMS";
+                                                    //     match std::env::var(key) {
+                                                    //         Ok(val) => {
+                                                    //             PoweredByDbms::from_str(&val).expect("POWERED_BY_DBMS must be set correctly.")
+                                                    //         },
+                                                    //         Err(_) => PoweredByDbms::Unavailable,
+                                                    //     }
+                                                    // });
+                                                    // if powered_by_dbms == &PoweredByDbms::Postgres
+                                                    //     || powered_by_dbms == &PoweredByDbms::Sqlite
+                                                    // {
+                                                    //     // 1) Fetch old proof challenge record (its id will be used later)
+                                                    //     //    from db or insert old proof if necessary/missing
+                                                    //     info!(target: "server_log", "Check if old/last challenge for the pool exists in the database");
+                                                    //     let mut submission_challenge;
+                                                    //     loop {
+                                                    //         if let Ok(c) = database
+                                                    //             .get_challenge_by_challenge(
+                                                    //                 old_proof.challenge.to_vec(),
+                                                    //             )
+                                                    //             .await
+                                                    //         {
+                                                    //             submission_challenge = c;
+                                                    //             submission_challenge_id =
+                                                    //                 submission_challenge.id;
+                                                    //             break;
+                                                    //         } else {
+                                                    //             warn!(target: "server_log",
+                                                    //                 "Failed to get old/last challenge record from db! Inserting..."
+                                                    //             );
+                                                    //             let missing_challenge =
+                                                    //                 models::InsertChallenge {
+                                                    //                     pool_id: mine_config
+                                                    //                         .pool_id,
+                                                    //                     challenge: old_proof
+                                                    //                         .challenge
+                                                    //                         .to_vec(),
+                                                    //                     rewards_earned: None,
+                                                    //                 };
 
-                                                            tokio::time::sleep(
-                                                                Duration::from_millis(1000),
-                                                            )
-                                                            .await;
-                                                        }
-                                                        info!(target: "server_log", "New challenge record successfully added to db");
-                                                    }
+                                                    //             while let Err(_) = database
+                                                    //                 .add_new_challenge(
+                                                    //                     missing_challenge.clone(),
+                                                    //                 )
+                                                    //                 .await
+                                                    //             {
+                                                    //                 error!(target: "server_log", "Failed to add old/last challenge record to db.");
+                                                    //                 info!(target: "server_log", "Check if the challenge already exists in db.");
+                                                    //                 if let Ok(c) = database
+                                                    //                     .get_challenge_by_challenge(
+                                                    //                         missing_challenge
+                                                    //                             .challenge
+                                                    //                             .clone(),
+                                                    //                     )
+                                                    //                     .await
+                                                    //                 {
+                                                    //                     submission_challenge = c;
+                                                    //                     submission_challenge_id =
+                                                    //                         submission_challenge.id;
+                                                    //                     info!(target: "server_log", "The challenge already exists, continuing");
+                                                    //                     break;
+                                                    //                 }
 
-                                                    break;
+                                                    //                 tokio::time::sleep(
+                                                    //                     Duration::from_millis(
+                                                    //                         1_000,
+                                                    //                     ),
+                                                    //                 )
+                                                    //                 .await;
+                                                    //             }
+                                                    //             info!(target: "server_log", "Old/last challenge record successfully added to db");
+                                                    //             // tokio::time::sleep(Duration::from_millis(1_000)).await;
+                                                    //             // obtain new added challenge id
+                                                    //             if let Ok(c) = database
+                                                    //                 .get_challenge_by_challenge(
+                                                    //                     missing_challenge
+                                                    //                         .challenge
+                                                    //                         .clone(),
+                                                    //                 )
+                                                    //                 .await
+                                                    //             {
+                                                    //                 submission_challenge = c;
+                                                    //                 submission_challenge_id =
+                                                    //                     submission_challenge.id;
+                                                    //             }
+                                                    //         }
+                                                    //     }
+
+                                                    //     // 2) Add new challenge record to db
+                                                    //     info!(target: "server_log", "Adding new challenge record to db");
+                                                    //     let new_challenge =
+                                                    //         models::InsertChallenge {
+                                                    //             pool_id: mine_config.pool_id,
+                                                    //             challenge: latest_proof
+                                                    //                 .challenge
+                                                    //                 .to_vec(),
+                                                    //             rewards_earned: None,
+                                                    //         };
+
+                                                    //     while let Err(_) = database
+                                                    //         .add_new_challenge(
+                                                    //             new_challenge.clone(),
+                                                    //         )
+                                                    //         .await
+                                                    //     {
+                                                    //         error!(target: "server_log",
+                                                    //             "Failed to add new challenge record to db."
+                                                    //         );
+                                                    //         info!(target: "server_log", "Check if new challenge already exists in db.");
+                                                    //         if let Ok(_) = database
+                                                    //             .get_challenge_by_challenge(
+                                                    //                 new_challenge.challenge.clone(),
+                                                    //             )
+                                                    //             .await
+                                                    //         {
+                                                    //             info!(target: "server_log",
+                                                    //                 "Challenge already exists in db, continuing"
+                                                    //             );
+                                                    //             break;
+                                                    //         }
+
+                                                    //         tokio::time::sleep(
+                                                    //             Duration::from_millis(1_000),
+                                                    //         )
+                                                    //         .await;
+                                                    //     }
+                                                    //     info!(target: "server_log",
+                                                    //         "New challenge record successfully added to db"
+                                                    //     );
+
+                                                    //     // 3) Insert commissions earning to db
+                                                    //     let commissions_earning =
+                                                    //         vec![models::InsertEarning {
+                                                    //             miner_id: mine_config
+                                                    //                 .commissions_miner_id,
+                                                    //             pool_id: mine_config.pool_id,
+                                                    //             challenge_id: submission_challenge
+                                                    //                 .id,
+                                                    //             amount: commissions,
+                                                    //         }];
+                                                    //     info!(target: "server_log", "Inserting commissions earning");
+                                                    //     while let Err(_) = database
+                                                    //         .add_new_earnings_batch(
+                                                    //             commissions_earning.clone(),
+                                                    //         )
+                                                    //         .await
+                                                    //     {
+                                                    //         error!(target: "server_log", "Failed to add commmissions earning... retrying...");
+                                                    //         tokio::time::sleep(
+                                                    //             Duration::from_millis(500),
+                                                    //         )
+                                                    //         .await;
+                                                    //     }
+                                                    //     info!(target: "server_log", "Inserted commissions earning");
+
+                                                    //     let new_commission_rewards =
+                                                    //         vec![models::UpdateReward {
+                                                    //             miner_id: mine_config
+                                                    //                 .commissions_miner_id,
+                                                    //             balance: commissions,
+                                                    //         }];
+
+                                                    //     info!(target: "server_log", "Updating commissions rewards...");
+                                                    //     while let Err(_) = database
+                                                    //         .update_rewards(
+                                                    //             new_commission_rewards.clone(),
+                                                    //         )
+                                                    //         .await
+                                                    //     {
+                                                    //         error!(target: "server_log", "Failed to update commission rewards in db. Retrying...");
+                                                    //         tokio::time::sleep(
+                                                    //             Duration::from_millis(500),
+                                                    //         )
+                                                    //         .await;
+                                                    //     }
+                                                    //     info!(target: "server_log", "Updated commissions rewards");
+                                                    //     tokio::time::sleep(Duration::from_millis(
+                                                    //         200,
+                                                    //     ))
+                                                    //     .await;
+                                                    // }
+
+                                                    // // Rewards processing step III: send internal mine success message for challenge of rewares earned.
+                                                    // let mut total_hashpower: u64 = 0;
+
+                                                    // for contribution in contributions.iter() {
+                                                    //     total_hashpower += contribution.1.hashpower;
+                                                    // }
+
+                                                    // info!(target: "server_log", "Sending internal mine success for challenge: {}", BASE64_STANDARD.encode(old_proof.challenge));
+                                                    // let _ = mine_success_sender.send(
+                                                    //     MessageInternalMineSuccess {
+                                                    //         difficulty,
+                                                    //         total_balance: balance,
+                                                    //         rewards: pool_rewards,
+                                                    //         commissions,
+                                                    //         challenge_id: submission_challenge_id,
+                                                    //         challenge: old_proof.challenge,
+                                                    //         best_nonce: u64::from_le_bytes(
+                                                    //             best_solution.n,
+                                                    //         ),
+                                                    //         total_hashpower,
+                                                    //         ore_config,
+                                                    //         multiplier,
+                                                    //         contributions,
+                                                    //     },
+                                                    // ); // End of 3 steps for rewards processing
+
+                                                    // // reset nonce and epoch_hashes
+                                                    // info!(target: "server_log", "reset nonce and epoch hashes");
+                                                    // // reset nonce
+                                                    // {
+                                                    //     let mut nonce = app_nonce.lock().await;
+                                                    //     *nonce = 0;
+                                                    // }
+                                                    // // reset epoch hashes
+                                                    // {
+                                                    //     let mut mut_epoch_hashes =
+                                                    //         app_epoch_hashes.write().await;
+                                                    //     mut_epoch_hashes.challenge = p.challenge;
+                                                    //     mut_epoch_hashes.best_hash.solution = None;
+                                                    //     mut_epoch_hashes.best_hash.difficulty = 0;
+                                                    //     mut_epoch_hashes.contributions =
+                                                    //         HashMap::new();
+                                                    // }
+
+                                                    // // unset mining pause flag to start new mining
+                                                    // // mission
+                                                    // info!(target: "server_log", "resume new mining mission");
+                                                    // PAUSED.store(false, Relaxed);
+
+                                                    // // Mission completed, send signal to tx sender
+                                                    // let _ = mission_completed_sender.send(0);
+
+                                                    // break;
+                                                } else {
+                                                    continue; // loop
                                                 }
                                             } else {
                                                 error!(target: "server_log", "Failed to get proof via rpc call.");
+                                                continue;
                                             }
                                         } else {
-                                            info!(target: "server_log", "Proof challenge updated!");
-                                            let mut submission_challenge_id = i64::MAX;
-                                            let powered_by_dbms =
-                                                POWERED_BY_DBMS.get_or_init(|| {
-                                                    let key = "POWERED_BY_DBMS";
-                                                    match std::env::var(key) {
-                                                        Ok(val) => {
-                                                            PoweredByDbms::from_str(&val).expect("POWERED_BY_DBMS must be set correctly.")
-                                                        },
-                                                        Err(_) => PoweredByDbms::Unavailable,
-                                                    }
-                                                });
-                                            if powered_by_dbms == &PoweredByDbms::Postgres
-                                                || powered_by_dbms == &PoweredByDbms::Sqlite
-                                            {
-                                                // 1) Fetch old proof challenge(id used later)
-                                                //    records from db or insert old proof if
-                                                //    necessary
-                                                info!(target: "server_log", "Check if old/last challenge for the pool exists in the database");
-                                                let old_challenge;
-                                                loop {
-                                                    if let Ok(c) = database
-                                                        .get_challenge_by_challenge(
-                                                            old_proof.challenge.to_vec(),
+                                            // old proof is not latest proof any more. Detected by:
+                                            // b) passive proof subscription via websocket
+                                            info!(target: "server_log", "Proof challenge updated! Detected by ws subscription.");
+
+                                            // Note: app_proof has been automatically updated via ws subscription. No more action here.
+
+                                            // // refresh latest proof
+                                            // let lock = app_proof.lock().await;
+                                            // let latest_proof = lock.clone();
+                                            // drop(lock);
+
+                                            // // Process rewards in 3 steps
+                                            // info!(target: "server_log", "Checking rewards earned.");
+                                            // let mut submission_challenge_id = i64::MAX;
+
+                                            // // Rewards processing step I: calc. balances, commissions and write logs
+                                            // let balance = (latest_proof.balance as f64)
+                                            //     / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
+                                            // info!(target: "server_log", "New balance: {}", balance);
+
+                                            // let multiplier = if let Some(config) = ore_config {
+                                            //     if config.top_balance > 0 {
+                                            //         1.0 + (latest_proof.balance as f64
+                                            //             / config.top_balance as f64)
+                                            //             .min(1.0f64)
+                                            //     } else {
+                                            //         1.0f64
+                                            //     }
+                                            // } else {
+                                            //     1.0f64
+                                            // };
+                                            // info!(target: "server_log", "Multiplier: {}", multiplier);
+
+                                            // let pool_rewards =
+                                            //     (latest_proof.balance - old_proof.balance) as i64;
+                                            // let commissions =
+                                            //     pool_rewards.mul(5).saturating_div(100);
+                                            // let miners_rewards = pool_rewards - commissions;
+
+                                            // let dec_pool_rewards = (pool_rewards as f64)
+                                            //     / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
+                                            // let dec_miners_rewards = (miners_rewards as f64)
+                                            //     / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
+                                            // let dec_commissions = (commissions as f64)
+                                            //     / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
+
+                                            // info!(target: "server_log", "Pool Rewards: {} ORE", dec_pool_rewards);
+                                            // info!(target: "server_log", "Miners Rewards: {} ORE", dec_miners_rewards);
+                                            // info!(target: "server_log", "Commission: {} ORE", dec_commissions);
+
+                                            // // Rewards processing step II: if powered by dbms, do database crud routines.
+                                            // let powered_by_dbms =
+                                            //     POWERED_BY_DBMS.get_or_init(|| {
+                                            //         let key = "POWERED_BY_DBMS";
+                                            //         match std::env::var(key) {
+                                            //             Ok(val) => {
+                                            //                 PoweredByDbms::from_str(&val).expect("POWERED_BY_DBMS must be set correctly.")
+                                            //             },
+                                            //             Err(_) => PoweredByDbms::Unavailable,
+                                            //         }
+                                            //     });
+                                            // if powered_by_dbms == &PoweredByDbms::Postgres
+                                            //     || powered_by_dbms == &PoweredByDbms::Sqlite
+                                            // {
+                                            //     // 1) Fetch old proof challenge record (its id will be used later)
+                                            //     //    from db or insert old proof if necessary/missing
+                                            //     info!(target: "server_log", "Check if old/last challenge for the pool exists in the database");
+                                            //     let mut submission_challenge;
+                                            //     loop {
+                                            //         if let Ok(c) = database
+                                            //             .get_challenge_by_challenge(
+                                            //                 old_proof.challenge.to_vec(),
+                                            //             )
+                                            //             .await
+                                            //         {
+                                            //             submission_challenge = c;
+                                            //             submission_challenge_id =
+                                            //                 submission_challenge.id;
+                                            //             break;
+                                            //         } else {
+                                            //             warn!(target: "server_log",
+                                            //                 "Failed to get old/last challenge record from db! Inserting..."
+                                            //             );
+                                            //             let missing_challenge =
+                                            //                 models::InsertChallenge {
+                                            //                     pool_id: mine_config.pool_id,
+                                            //                     challenge: old_proof
+                                            //                         .challenge
+                                            //                         .to_vec(),
+                                            //                     rewards_earned: None,
+                                            //                 };
+
+                                            //             while let Err(_) = database
+                                            //                 .add_new_challenge(
+                                            //                     missing_challenge.clone(),
+                                            //                 )
+                                            //                 .await
+                                            //             {
+                                            //                 error!(target: "server_log", "Failed to add old/last challenge record to db.");
+                                            //                 info!(target: "server_log", "Check if the challenge already exists in db.");
+                                            //                 if let Ok(c) = database
+                                            //                     .get_challenge_by_challenge(
+                                            //                         missing_challenge
+                                            //                             .challenge
+                                            //                             .clone(),
+                                            //                     )
+                                            //                     .await
+                                            //                 {
+                                            //                     submission_challenge = c;
+                                            //                     submission_challenge_id =
+                                            //                         submission_challenge.id;
+                                            //                     info!(target: "server_log", "The challenge already exists, continuing");
+                                            //                     break;
+                                            //                 }
+
+                                            //                 tokio::time::sleep(
+                                            //                     Duration::from_millis(1_000),
+                                            //                 )
+                                            //                 .await;
+                                            //             }
+                                            //             info!(target: "server_log", "Old/last challenge record successfully added to db");
+                                            //             // tokio::time::sleep(Duration::from_millis(1_000)).await;
+                                            //             // obtain new added challenge id
+                                            //             if let Ok(c) = database
+                                            //                 .get_challenge_by_challenge(
+                                            //                     missing_challenge.challenge.clone(),
+                                            //                 )
+                                            //                 .await
+                                            //             {
+                                            //                 submission_challenge = c;
+                                            //                 submission_challenge_id =
+                                            //                     submission_challenge.id;
+                                            //             }
+                                            //         }
+                                            //     }
+
+                                            //     // 2) Add new challenge record to db
+                                            //     info!(target: "server_log", "Adding new challenge record to db");
+                                            //     let new_challenge = models::InsertChallenge {
+                                            //         pool_id: mine_config.pool_id,
+                                            //         challenge: latest_proof.challenge.to_vec(),
+                                            //         rewards_earned: None,
+                                            //     };
+
+                                            //     while let Err(_) = database
+                                            //         .add_new_challenge(new_challenge.clone())
+                                            //         .await
+                                            //     {
+                                            //         error!(target: "server_log",
+                                            //             "Failed to add new challenge record to db."
+                                            //         );
+                                            //         info!(target: "server_log", "Check if new challenge already exists in db.");
+                                            //         if let Ok(_) = database
+                                            //             .get_challenge_by_challenge(
+                                            //                 new_challenge.challenge.clone(),
+                                            //             )
+                                            //             .await
+                                            //         {
+                                            //             info!(target: "server_log",
+                                            //                 "Challenge already exists in db, continuing"
+                                            //             );
+                                            //             break;
+                                            //         }
+
+                                            //         tokio::time::sleep(Duration::from_millis(
+                                            //             1_000,
+                                            //         ))
+                                            //         .await;
+                                            //     }
+                                            //     info!(target: "server_log",
+                                            //         "New challenge record successfully added to db"
+                                            //     );
+
+                                            //     // 3) Insert commissions earning to db
+                                            //     let commissions_earning =
+                                            //         vec![models::InsertEarning {
+                                            //             miner_id: mine_config.commissions_miner_id,
+                                            //             pool_id: mine_config.pool_id,
+                                            //             challenge_id: submission_challenge.id,
+                                            //             amount: commissions,
+                                            //         }];
+                                            //     info!(target: "server_log", "Inserting commissions earning");
+                                            //     while let Err(_) = database
+                                            //         .add_new_earnings_batch(
+                                            //             commissions_earning.clone(),
+                                            //         )
+                                            //         .await
+                                            //     {
+                                            //         error!(target: "server_log", "Failed to add commmissions earning... retrying...");
+                                            //         tokio::time::sleep(Duration::from_millis(500))
+                                            //             .await;
+                                            //     }
+                                            //     info!(target: "server_log", "Inserted commissions earning");
+
+                                            //     let new_commission_rewards =
+                                            //         vec![models::UpdateReward {
+                                            //             miner_id: mine_config.commissions_miner_id,
+                                            //             balance: commissions,
+                                            //         }];
+
+                                            //     info!(target: "server_log", "Updating commissions rewards...");
+                                            //     while let Err(_) = database
+                                            //         .update_rewards(new_commission_rewards.clone())
+                                            //         .await
+                                            //     {
+                                            //         error!(target: "server_log", "Failed to update commission rewards in db. Retrying...");
+                                            //         tokio::time::sleep(Duration::from_millis(500))
+                                            //             .await;
+                                            //     }
+                                            //     info!(target: "server_log", "Updated commissions rewards");
+                                            //     tokio::time::sleep(Duration::from_millis(200))
+                                            //         .await;
+                                            // }
+
+                                            // // Rewards processing step III: send internal mine success message for challenge of rewares earned.
+                                            // let mut total_hashpower: u64 = 0;
+
+                                            // for contribution in contributions.iter() {
+                                            //     total_hashpower += contribution.1.hashpower;
+                                            // }
+
+                                            // info!(target: "server_log", "Sending internal mine success for challenge: {}", BASE64_STANDARD.encode(old_proof.challenge));
+                                            // let _ = mine_success_sender.send(
+                                            //     MessageInternalMineSuccess {
+                                            //         difficulty,
+                                            //         total_balance: balance,
+                                            //         rewards: pool_rewards,
+                                            //         commissions,
+                                            //         challenge_id: submission_challenge_id,
+                                            //         challenge: old_proof.challenge,
+                                            //         best_nonce: u64::from_le_bytes(best_solution.n),
+                                            //         total_hashpower,
+                                            //         ore_config,
+                                            //         multiplier,
+                                            //         contributions,
+                                            //     },
+                                            // ); // End of 3 steps for rewards processing
+
+                                            // // reset nonce and epoch_hashes
+                                            // info!(target: "server_log", "reset nonce and epoch hashes");
+
+                                            // // reset nonce
+                                            // {
+                                            //     let mut nonce = app_nonce.lock().await;
+                                            //     *nonce = 0;
+                                            // }
+                                            // // reset epoch hashes
+                                            // {
+                                            //     let mut mut_epoch_hashes =
+                                            //         app_epoch_hashes.write().await;
+                                            //     mut_epoch_hashes.challenge = latest_proof.challenge;
+                                            //     mut_epoch_hashes.best_hash.solution = None;
+                                            //     mut_epoch_hashes.best_hash.difficulty = 0;
+                                            //     mut_epoch_hashes.contributions = HashMap::new();
+                                            // }
+                                            // // unset mining pause flag to start new mining mission
+                                            // info!(target: "server_log", "resume new mining mission");
+                                            // PAUSED.store(false, Relaxed);
+
+                                            // // Mission completed, send signal to tx sender
+                                            // if let Err(_) = mission_completed_sender.send(0) {
+                                            //     error!(target: "server_log", "The mission completed receiver dropped.");
+                                            // }
+
+                                            // // last one, notify slack and other messaging channels if necessary
+                                            // if difficulty.ge(&*slack_difficulty)
+                                            //     || difficulty.ge(&*messaging_diff)
+                                            // {
+                                            //     if messaging_flags.contains(MessagingFlags::SLACK) {
+                                            //         let _ = slack_message_sender.send(
+                                            //             RewardsMessage::Rewards(
+                                            //                 difficulty,
+                                            //                 dec_pool_rewards,
+                                            //                 balance,
+                                            //             ),
+                                            //         );
+                                            //     }
+
+                                            //     if messaging_flags.contains(MessagingFlags::DISCORD)
+                                            //     {
+                                            //         let _ = discord_message_sender.send(
+                                            //             RewardsMessage::Rewards(
+                                            //                 difficulty,
+                                            //                 dec_pool_rewards,
+                                            //                 balance,
+                                            //             ),
+                                            //         );
+                                            //     }
+                                            // }
+
+                                            // break;
+                                        }
+                                        // arrrived here, means proof change detected
+                                        // refresh latest proof
+                                        let lock = app_proof.lock().await;
+                                        let latest_proof = lock.clone();
+                                        drop(lock);
+
+                                        // Process rewards in 3 steps
+                                        info!(target: "server_log", "Checking rewards earned.");
+                                        let mut submission_challenge_id = i64::MAX;
+
+                                        // Rewards processing step I: calc. balances, commissions and write logs
+                                        let balance = (latest_proof.balance as f64)
+                                            / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
+                                        info!(target: "server_log", "New balance: {}", balance);
+
+                                        let multiplier = if let Some(config) = ore_config {
+                                            if config.top_balance > 0 {
+                                                1.0 + (latest_proof.balance as f64
+                                                    / config.top_balance as f64)
+                                                    .min(1.0f64)
+                                            } else {
+                                                1.0f64
+                                            }
+                                        } else {
+                                            1.0f64
+                                        };
+                                        info!(target: "server_log", "Multiplier: {}", multiplier);
+
+                                        let pool_rewards =
+                                            (latest_proof.balance - old_proof.balance) as i64;
+                                        let commissions = pool_rewards.mul(5).saturating_div(100);
+                                        let miners_rewards = pool_rewards - commissions;
+
+                                        let dec_pool_rewards = (pool_rewards as f64)
+                                            / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
+                                        let dec_miners_rewards = (miners_rewards as f64)
+                                            / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
+                                        let dec_commissions = (commissions as f64)
+                                            / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
+
+                                        info!(target: "server_log", "Pool Rewards: {} ORE", dec_pool_rewards);
+                                        info!(target: "server_log", "Miners Rewards: {} ORE", dec_miners_rewards);
+                                        info!(target: "server_log", "Commission: {} ORE", dec_commissions);
+
+                                        // Rewards processing step II: if powered by dbms, do database crud routines.
+                                        let powered_by_dbms = POWERED_BY_DBMS.get_or_init(|| {
+                                            let key = "POWERED_BY_DBMS";
+                                            match std::env::var(key) {
+                                                Ok(val) => PoweredByDbms::from_str(&val).expect(
+                                                    "POWERED_BY_DBMS must be set correctly.",
+                                                ),
+                                                Err(_) => PoweredByDbms::Unavailable,
+                                            }
+                                        });
+                                        if powered_by_dbms == &PoweredByDbms::Postgres
+                                            || powered_by_dbms == &PoweredByDbms::Sqlite
+                                        {
+                                            // 1) Fetch old proof challenge record (its id will be used later)
+                                            //    from db or insert old proof if necessary/missing
+                                            info!(target: "server_log", "Check if old/last challenge for the pool exists in the database");
+                                            let submission_challenge;
+                                            'db_challenge: loop {
+                                                if let Ok(c) = database
+                                                    .get_challenge_by_challenge(
+                                                        old_proof.challenge.to_vec(),
+                                                    )
+                                                    .await
+                                                {
+                                                    submission_challenge = c;
+                                                    submission_challenge_id =
+                                                        submission_challenge.id;
+                                                    break;
+                                                } else {
+                                                    warn!(target: "server_log",
+                                                        "Failed to get old/last challenge record from db! Inserting..."
+                                                    );
+                                                    let missing_challenge =
+                                                        models::InsertChallenge {
+                                                            pool_id: mine_config.pool_id,
+                                                            challenge: old_proof.challenge.to_vec(),
+                                                            rewards_earned: None,
+                                                        };
+
+                                                    while let Err(_) = database
+                                                        .add_new_challenge(
+                                                            missing_challenge.clone(),
                                                         )
                                                         .await
                                                     {
-                                                        old_challenge = c;
-                                                        submission_challenge_id = old_challenge.id;
-                                                        break;
-                                                    } else {
-                                                        warn!(target: "server_log",
-                                                            "Failed to get old/last challenge record from db! Inserting if necessary..."
-                                                        );
-                                                        let new_challenge =
-                                                            models::InsertChallenge {
-                                                                pool_id: mine_config.pool_id,
-                                                                challenge: old_proof
-                                                                    .challenge
-                                                                    .to_vec(),
-                                                                rewards_earned: None,
-                                                            };
-
-                                                        while let Err(_) = database
-                                                            .add_new_challenge(
-                                                                new_challenge.clone(),
+                                                        error!(target: "server_log", "Failed to add old/last challenge record to db.");
+                                                        info!(target: "server_log", "Check if the challenge already exists in db.");
+                                                        if let Ok(c) = database
+                                                            .get_challenge_by_challenge(
+                                                                missing_challenge.challenge.clone(),
                                                             )
                                                             .await
                                                         {
-                                                            error!(target: "server_log", "Failed to add old/last challenge record to db.");
-                                                            info!(target: "server_log", "Check if the challenge already exists in db.");
-                                                            if let Ok(_) = database
-                                                                .get_challenge_by_challenge(
-                                                                    new_challenge.challenge.clone(),
-                                                                )
-                                                                .await
-                                                            {
-                                                                info!(target: "server_log", "The challenge already exists, continuing");
-                                                                break;
-                                                            }
-
-                                                            tokio::time::sleep(
-                                                                Duration::from_millis(1_000),
-                                                            )
-                                                            .await;
+                                                            submission_challenge = c;
+                                                            submission_challenge_id =
+                                                                submission_challenge.id;
+                                                            info!(target: "server_log", "The challenge already exists, continuing");
+                                                            break 'db_challenge;
                                                         }
-                                                        info!(target: "server_log", "Old/last challenge record successfully added to db");
-                                                        // tokio::time::sleep(Duration::from_millis(1_000)).await;
+
+                                                        tokio::time::sleep(Duration::from_millis(
+                                                            1_000,
+                                                        ))
+                                                        .await;
                                                     }
-                                                }
-
-                                                // 2) Add new challenge record to db
-                                                info!(target: "server_log", "Adding new challenge record to db");
-                                                let new_challenge = models::InsertChallenge {
-                                                    pool_id: mine_config.pool_id,
-                                                    challenge: latest_proof.challenge.to_vec(),
-                                                    rewards_earned: None,
-                                                };
-
-                                                while let Err(_) = database
-                                                    .add_new_challenge(new_challenge.clone())
-                                                    .await
-                                                {
-                                                    error!(target: "server_log",
-                                                        "Failed to add new challenge record to db."
-                                                    );
-                                                    info!(target: "server_log", "Check if new challenge already exists in db.");
-                                                    if let Ok(_) = database
+                                                    info!(target: "server_log", "Old/last challenge record successfully added to db");
+                                                    // tokio::time::sleep(Duration::from_millis(1_000)).await;
+                                                    // obtain new added challenge id
+                                                    if let Ok(c) = database
                                                         .get_challenge_by_challenge(
-                                                            new_challenge.challenge.clone(),
+                                                            missing_challenge.challenge.clone(),
                                                         )
                                                         .await
                                                     {
-                                                        info!(target: "server_log",
-                                                            "Challenge already exists in db, continuing"
-                                                        );
-                                                        break;
+                                                        submission_challenge = c;
+                                                        submission_challenge_id =
+                                                            submission_challenge.id;
+                                                        break 'db_challenge;
                                                     }
-
-                                                    tokio::time::sleep(Duration::from_millis(
-                                                        1_000,
-                                                    ))
-                                                    .await;
                                                 }
-                                                info!(target: "server_log",
-                                                    "New challenge record successfully added to db"
+                                            }
+
+                                            // 2) Add new challenge record to db
+                                            info!(target: "server_log", "Adding new challenge record to db");
+                                            let new_challenge = models::InsertChallenge {
+                                                pool_id: mine_config.pool_id,
+                                                challenge: latest_proof.challenge.to_vec(),
+                                                rewards_earned: None,
+                                            };
+
+                                            while let Err(_) = database
+                                                .add_new_challenge(new_challenge.clone())
+                                                .await
+                                            {
+                                                error!(target: "server_log",
+                                                    "Failed to add new challenge record to db."
+                                                );
+                                                info!(target: "server_log", "Check if new challenge already exists in db.");
+                                                if let Ok(_) = database
+                                                    .get_challenge_by_challenge(
+                                                        new_challenge.challenge.clone(),
+                                                    )
+                                                    .await
+                                                {
+                                                    info!(target: "server_log",
+                                                        "Challenge already exists in db, continuing"
+                                                    );
+                                                    break;
+                                                }
+
+                                                tokio::time::sleep(Duration::from_millis(1_000))
+                                                    .await;
+                                            }
+                                            info!(target: "server_log",
+                                                "New challenge record successfully added to db"
+                                            );
+
+                                            // 3) Insert commissions earning to db
+                                            let commissions_earning = vec![models::InsertEarning {
+                                                miner_id: mine_config.commissions_miner_id,
+                                                pool_id: mine_config.pool_id,
+                                                challenge_id: submission_challenge.id,
+                                                amount: commissions,
+                                            }];
+                                            info!(target: "server_log", "Inserting commissions earning");
+                                            while let Err(_) = database
+                                                .add_new_earnings_batch(commissions_earning.clone())
+                                                .await
+                                            {
+                                                error!(target: "server_log", "Failed to add commmissions earning... retrying...");
+                                                tokio::time::sleep(Duration::from_millis(500))
+                                                    .await;
+                                            }
+                                            info!(target: "server_log", "Inserted commissions earning");
+
+                                            let new_commission_rewards =
+                                                vec![models::UpdateReward {
+                                                    miner_id: mine_config.commissions_miner_id,
+                                                    balance: commissions,
+                                                }];
+
+                                            info!(target: "server_log", "Updating commissions rewards...");
+                                            while let Err(_) = database
+                                                .update_rewards(new_commission_rewards.clone())
+                                                .await
+                                            {
+                                                error!(target: "server_log", "Failed to update commission rewards in db. Retrying...");
+                                                tokio::time::sleep(Duration::from_millis(500))
+                                                    .await;
+                                            }
+                                            info!(target: "server_log", "Updated commissions rewards");
+                                            tokio::time::sleep(Duration::from_millis(200)).await;
+                                        }
+
+                                        // Rewards processing step III: send internal mine success message for challenge of rewares earned.
+                                        let mut total_hashpower: u64 = 0;
+
+                                        for contribution in contributions.iter() {
+                                            total_hashpower += contribution.1.hashpower;
+                                        }
+
+                                        info!(target: "server_log", "Sending internal mine success for challenge: {}", BASE64_STANDARD.encode(old_proof.challenge));
+                                        let _ =
+                                            mine_success_sender.send(MessageInternalMineSuccess {
+                                                difficulty,
+                                                total_balance: balance,
+                                                rewards: pool_rewards,
+                                                commissions,
+                                                challenge_id: submission_challenge_id,
+                                                challenge: old_proof.challenge,
+                                                best_nonce: u64::from_le_bytes(best_solution.n),
+                                                total_hashpower,
+                                                ore_config,
+                                                multiplier,
+                                                contributions,
+                                            }); // End of 3 steps for rewards processing
+
+                                        // reset nonce and epoch_hashes
+                                        info!(target: "server_log", "reset nonce and epoch hashes");
+
+                                        // reset nonce
+                                        {
+                                            let mut nonce = app_nonce.lock().await;
+                                            *nonce = 0;
+                                        }
+                                        // reset epoch hashes
+                                        {
+                                            let mut mut_epoch_hashes =
+                                                app_epoch_hashes.write().await;
+                                            mut_epoch_hashes.challenge = latest_proof.challenge;
+                                            mut_epoch_hashes.best_hash.solution = None;
+                                            mut_epoch_hashes.best_hash.difficulty = 0;
+                                            mut_epoch_hashes.contributions = HashMap::new();
+                                        }
+                                        // unset mining pause flag to start new mining mission
+                                        info!(target: "server_log", "resume new mining mission");
+                                        PAUSED.store(false, Relaxed);
+
+                                        // Mission completed, send signal to tx sender
+                                        if let Err(_) = mission_completed_sender.send(0) {
+                                            error!(target: "server_log", "The mission completed receiver dropped.");
+                                        }
+
+                                        // last one, notify slack and other messaging channels if necessary
+                                        if difficulty.ge(&*slack_difficulty)
+                                            || difficulty.ge(&*messaging_diff)
+                                        {
+                                            if messaging_flags.contains(MessagingFlags::SLACK) {
+                                                let _ = slack_message_sender.send(
+                                                    RewardsMessage::Rewards(
+                                                        difficulty,
+                                                        dec_pool_rewards,
+                                                        balance,
+                                                    ),
                                                 );
                                             }
 
-                                            info!(target: "server_log", "Checking rewards earned.");
-                                            let lock = app_proof.lock().await;
-                                            let latest_proof = lock.clone();
-                                            drop(lock);
-                                            let balance = (latest_proof.balance as f64)
-                                                / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
-                                            info!(target: "server_log", "New balance: {}", balance);
-
-                                            let multiplier = if let Some(config) = ore_config {
-                                                if config.top_balance > 0 {
-                                                    1.0 + (latest_proof.balance as f64
-                                                        / config.top_balance as f64)
-                                                        .min(1.0f64)
-                                                } else {
-                                                    1.0f64
-                                                }
-                                            } else {
-                                                1.0f64
-                                            };
-                                            info!(target: "server_log", "Multiplier: {}", multiplier);
-
-                                            let rewards =
-                                                (latest_proof.balance - old_proof.balance) as i64;
-                                            let dec_rewards = (rewards as f64)
-                                                / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
-                                            info!(target: "server_log", "Earned: {} ORE", dec_rewards);
-
-                                            let contributions = {
-                                                app_epoch_hashes.read().await.contributions.clone()
-                                            };
-
-                                            let mut total_hashpower: u64 = 0;
-
-                                            for contribution in contributions.iter() {
-                                                total_hashpower += contribution.1.hashpower;
+                                            if messaging_flags.contains(MessagingFlags::DISCORD) {
+                                                let _ = discord_message_sender.send(
+                                                    RewardsMessage::Rewards(
+                                                        difficulty,
+                                                        dec_pool_rewards,
+                                                        balance,
+                                                    ),
+                                                );
                                             }
-
-                                            let _ = mine_success_sender.send(
-                                                MessageInternalMineSuccess {
-                                                    difficulty,
-                                                    total_balance: balance,
-                                                    rewards,
-                                                    challenge_id: submission_challenge_id,
-                                                    challenge: old_proof.challenge,
-                                                    best_nonce: u64::from_le_bytes(best_solution.n),
-                                                    total_hashpower,
-                                                    ore_config,
-                                                    multiplier,
-                                                    contributions,
-                                                },
-                                            );
-
-                                            {
-                                                let mut mut_proof = app_proof.lock().await;
-                                                *mut_proof = latest_proof;
-                                                drop(mut_proof);
-                                            }
-                                            // reset nonce and epoch_hashes
-                                            info!(target: "server_log", "reset nonce and epoch hashes");
-
-                                            // reset nonce
-                                            {
-                                                let mut nonce = app_nonce.lock().await;
-                                                *nonce = 0;
-                                            }
-                                            // reset epoch hashes
-                                            {
-                                                let mut mut_epoch_hashes =
-                                                    app_epoch_hashes.write().await;
-                                                mut_epoch_hashes.challenge = latest_proof.challenge;
-                                                mut_epoch_hashes.best_hash.solution = None;
-                                                mut_epoch_hashes.best_hash.difficulty = 0;
-                                                mut_epoch_hashes.contributions = HashMap::new();
-                                            }
-                                            // unset mining pause flag to start new mining mission
-                                            info!(target: "server_log", "resume new mining mission");
-                                            PAUSED.store(false, Relaxed);
-
-                                            // Mission completed, send signal to tx sender
-                                            if let Err(_) = mission_completed_sender.send(0) {
-                                                error!(target: "server_log", "The mission completed receiver dropped.");
-                                            }
-
-                                            // last one, notify slack and other messaging channels
-                                            // if necessary
-                                            if difficulty.ge(&*slack_difficulty)
-                                                || difficulty.ge(&*messaging_diff)
-                                            {
-                                                if messaging_flags.contains(MessagingFlags::SLACK) {
-                                                    let _ = slack_message_sender.send(
-                                                        RewardsMessage::Rewards(
-                                                            difficulty,
-                                                            dec_rewards,
-                                                            balance,
-                                                        ),
-                                                    );
-                                                }
-
-                                                if messaging_flags.contains(MessagingFlags::DISCORD)
-                                                {
-                                                    let _ = discord_message_sender.send(
-                                                        RewardsMessage::Rewards(
-                                                            difficulty,
-                                                            dec_rewards,
-                                                            balance,
-                                                        ),
-                                                    );
-                                                }
-                                            }
-
-                                            break;
                                         }
+
+                                        break;
                                     }
                                 });
 
-                                // MI: play sound here, meanwhile giving time to above spawned task
-                                // started
+                                // MI: play sound here, meanwhile giving time to start above spawned task
                                 if !*app_no_sound_notification {
                                     utils::play_sound();
                                 }

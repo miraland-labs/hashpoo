@@ -32,8 +32,9 @@ pub async fn pool_mine_success_processor(
     let powered_by_dbms = POWERED_BY_DBMS.get_or_init(|| {
         let key = "POWERED_BY_DBMS";
         match std::env::var(key) {
-            Ok(val) =>
-                PoweredByDbms::from_str(&val).expect("POWERED_BY_DBMS must be set correctly."),
+            Ok(val) => {
+                PoweredByDbms::from_str(&val).expect("POWERED_BY_DBMS must be set correctly.")
+            },
             Err(_) => PoweredByDbms::Unavailable,
         }
     });
@@ -66,15 +67,15 @@ pub async fn pool_mine_success_processor(
 
                 let instant = Instant::now();
                 info!(target: "server_log", "{} - Processing contribution results for challenge: {}.", id, c);
+                let total_rewards = msg.rewards - msg.commissions;
                 for (miner_pubkey, msg_contribution) in msg.contributions.iter() {
                     let hashpower_percent = (msg_contribution.hashpower as u128)
                         .saturating_mul(1_000_000)
                         .saturating_div(msg.total_hashpower as u128);
 
-                    // TODO: handle overflow/underflow and float imprecision issues
                     // let decimals = 10f64.powf(ORE_TOKEN_DECIMALS as f64);
                     let earned_rewards = hashpower_percent
-                        .saturating_mul(msg.rewards as u128)
+                        .saturating_mul(total_rewards as u128)
                         .saturating_div(1_000_000) as i64;
 
                     let new_earning = InsertEarning {

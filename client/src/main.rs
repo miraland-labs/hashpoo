@@ -686,9 +686,7 @@ async fn run_command(
                             match input.trim().parse::<u32>() {
                                 Ok(valid_threads)
                                     if valid_threads > 0 && valid_threads <= max_threads as u32 =>
-                                {
-                                    break valid_threads
-                                },
+                                    break valid_threads,
                                 _ => {
                                     println!("  Invalid thread count. Please enter a number between 1 and {}.", max_threads);
                                 },

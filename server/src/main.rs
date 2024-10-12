@@ -208,6 +208,7 @@ pub struct MessageInternalMineSuccess {
     difficulty: u32,
     total_balance: f64,
     rewards: i64,
+    commissions: i64,
     challenge_id: i64,
     challenge: [u8; 32],
     best_nonce: u64,
@@ -244,6 +245,8 @@ pub struct MineConfig {
     // mining pool db table rowid/identity if powered by dbms
     pool_id: i32,
     stats_enabled: bool,
+    commissions_pubkey: String,
+    commissions_miner_id: i64,
 }
 
 bitflags! {
@@ -460,6 +463,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let database_rr_uri = std::env::var("DATABASE_RR_URL").expect("DATABASE_RR_URL must be set.");
+    let commission_env =
+        std::env::var("COMMISSION_PUBKEY").expect("COMMISSION_PUBKEY must be set.");
+    let commission_pubkey = match Pubkey::from_str(&commission_env) {
+        Ok(pk) => pk,
+        Err(_) => {
+            println!("Invalid COMMISSION_PUBKEY");
+            return Ok(());
+        },
+    };
 
     let reports_interval_in_hrs: u64 = match std::env::var("REPORTS_INTERVAL_IN_HOURS") {
         Ok(val) => val.parse().expect("REPORTS_INTERVAL_IN_HOURS must be a positive number"),
@@ -623,10 +635,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             },
         }
+
+        info!(target: "server_log", "Check if the commissions receiver record exists in the database");
+        let commission_miner_id;
+        match database.get_miner_by_pubkey_str(commission_pubkey.to_string()).await {
+            Ok(miner) => {
+                info!(target: "server_log", "Found commissions receiver in db.");
+                commission_miner_id = miner.id;
+            },
+            Err(_) => {
+                info!(target: "server_log", "Failed to get commissions receiver account from database.");
+                info!(target: "server_log", "Inserting Commissions receiver account...");
+
+                match database
+                    .signup_enrollment(commission_pubkey.to_string(), wallet_pubkey.to_string())
+                    .await
+                {
+                    Ok(_) => {
+                        info!(target: "server_log", "Successfully inserted Commissions receiver account...");
+                        if let Ok(m) =
+                            database.get_miner_by_pubkey_str(commission_pubkey.to_string()).await
+                        {
+                            commission_miner_id = m.id;
+                        } else {
+                            panic!("Failed to get commission receiver account id")
+                        }
+                    },
+                    Err(_) => {
+                        panic!("Failed to insert comissions receiver account")
+                    },
+                }
+            },
+        }
+
         let mining_pool =
             database.get_pool_by_authority_pubkey(wallet_pubkey.to_string()).await.unwrap();
 
-        mine_config = Arc::new(MineConfig { pool_id: mining_pool.id, stats_enabled: args.stats });
+        mine_config = Arc::new(MineConfig {
+            pool_id: mining_pool.id,
+            stats_enabled: args.stats,
+            commissions_pubkey: commission_pubkey.to_string(),
+            commissions_miner_id: commission_miner_id,
+        });
 
         info!(target: "server_log", "Check if current challenge for pool exists in the database");
         let challenge = database.get_challenge_by_challenge(proof.challenge.to_vec()).await;
@@ -653,7 +703,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         }
     } else {
-        mine_config = Arc::new(MineConfig { pool_id: i32::MAX, stats_enabled: args.stats });
+        // NOT POWERED BY DBMS
+        mine_config = Arc::new(MineConfig {
+            pool_id: i32::MAX,
+            stats_enabled: args.stats,
+            commissions_pubkey: commission_pubkey.to_string(),
+            commissions_miner_id: i64::MAX,
+        });
     }
 
     let epoch_hashes = Arc::new(RwLock::new(EpochHashes {
