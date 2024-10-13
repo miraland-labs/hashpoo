@@ -186,6 +186,7 @@ async fn _find_bus(rpc_client: &RpcClient) -> Pubkey {
 
 // Fetch proof account by address
 pub async fn get_proof(client: &RpcClient, address: Pubkey) -> Result<Proof, String> {
+    let mut retries = 0;
     loop {
         let data = client.get_account_data(&address).await;
         match data {
@@ -198,7 +199,10 @@ pub async fn get_proof(client: &RpcClient, address: Pubkey) -> Result<Proof, Str
                 }
             },
             Err(e) => {
-                // return Err("Failed to get proof account".to_string()),
+                if retries >= 4 {
+                    return Err("Failed 5 attempts to get proof account. The proof account has not been created yet.".to_string());
+                }
+                retries += 1;
                 error!(target: "server_log", "Failed to get proof account: {:?}", e);
                 info!(target: "server_log", "Retry to get proof account...");
             },
@@ -209,6 +213,7 @@ pub async fn get_proof(client: &RpcClient, address: Pubkey) -> Result<Proof, Str
 
 // Fetch solo proof account for authority/miner in loop
 pub async fn get_solo_proof(client: &RpcClient, authority: Pubkey) -> Result<Proof, String> {
+    let mut retries = 0;
     loop {
         // let proof_address = proof_pubkey(authority);
         let proof_address = solo_proof_pubkey(authority);
@@ -224,6 +229,10 @@ pub async fn get_solo_proof(client: &RpcClient, authority: Pubkey) -> Result<Pro
             },
             Err(e) => {
                 // return Err("Failed to get proof account".to_string()),
+                if retries >= 4 {
+                    return Err("Failed 5 attempts to get solo proof account. The proof account has not been created yet.".to_string());
+                }
+                retries += 1;
                 error!(target: "server_log", "Failed to get solo proof account: {:?}", e);
                 info!(target: "server_log", "Retry to get solo proof account...");
             },

@@ -185,7 +185,7 @@ pub async fn pool_submission_processor<'a>(
                             let current_timestamp = clock.unix_timestamp;
                             let mut ixs = vec![];
                             let _ = app_all_clients_sender.send(MessageInternalAllClients {
-                                text: String::from("Server is sending mining transaction..."),
+                                text: String::from("Server is submitting mining transaction..."),
                             });
 
                             let mut cu_limit = 480_000;
@@ -489,7 +489,7 @@ pub async fn pool_submission_processor<'a>(
                                     let mut num_checking = 0;
                                     loop {
                                         info!(target: "server_log", "Waiting & Checking for proof challenge update");
-                                        // Wait 500ms then check for updated proof
+                                        // Wait 500ms, then check for proof update, which may be caused by WS subscription.
                                         tokio::time::sleep(Duration::from_millis(500)).await;
                                         let lock = app_proof.lock().await;
                                         let latest_proof = lock.clone();
@@ -1125,8 +1125,8 @@ pub async fn pool_submission_processor<'a>(
 
                                             // break;
                                         }
-                                        // arrrived here, means proof change detected
-                                        // refresh latest proof
+                                        // arrrived here, means proof change detected, either by rpc call or ws subscription.
+                                        // refresh latest proof with new change
                                         let lock = app_proof.lock().await;
                                         let latest_proof = lock.clone();
                                         drop(lock);
@@ -1235,7 +1235,6 @@ pub async fn pool_submission_processor<'a>(
                                                         .await;
                                                     }
                                                     info!(target: "server_log", "Old/last challenge record successfully added to db");
-                                                    // tokio::time::sleep(Duration::from_millis(1_000)).await;
                                                     // obtain new added challenge id
                                                     if let Ok(c) = database
                                                         .get_challenge_by_challenge(

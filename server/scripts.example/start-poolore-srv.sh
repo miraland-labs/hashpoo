@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Start ore mining pool server
+# Start ore mining public pool server
 
 set -e
 

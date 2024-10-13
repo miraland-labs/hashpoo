@@ -14,7 +14,7 @@ CMD="$CLI \
         --use-http \
         --url poolore.miraland.io \
         --keypair $MKP \
-        protomine --threads $THREADS"
+        mine --threads $THREADS"
 
 echo "$CMD"
 until bash -c "$CMD"; do

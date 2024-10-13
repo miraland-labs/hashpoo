@@ -74,7 +74,7 @@ use {
     tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer},
     utils::{
         get_config, get_mini_pool_proof, get_ore_mint, get_proof, get_register_ix,
-        mini_pool_proof_pubkey,
+        mini_pool_proof_pubkey, ORE_TOKEN_DECIMALS,
     },
 };
 
@@ -94,6 +94,14 @@ mod utils;
 // min hash power is matching with ore BASE_REWARD_RATE_MIN_THRESHOLD
 // min difficulty, matching with MIN_HASHPOWER.
 // const MIN_HASHPOWER: u64 = 5;
+
+// 0.00500000000 ORE
+// const MIN_CLAIM_AMOUNT: u64 = 500_000_000; // grains
+const MIN_CLAIM_AMOUNT: u64 = 1_000_000; // for test
+
+// 0.00400000000 ORE
+// const CREATE_ATA_DEDUCTION: u64 = 400_000_000; // grains
+const CREATE_ATA_DEDUCTION: u64 = 100_000; // for test
 
 // MI: if 0, rpc node will retry the tx until it is finalized or until the blockhash expires
 const RPC_RETRIES: usize = 3; // 5
@@ -652,7 +660,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .await
                 {
                     Ok(_) => {
-                        info!(target: "server_log", "Successfully inserted Commissions receiver account...");
+                        info!(target: "server_log", "Successfully inserted Commissions receiver account.");
                         if let Ok(m) =
                             database.get_miner_by_pubkey_str(commission_pubkey.to_string()).await
                         {
@@ -1374,9 +1382,15 @@ async fn post_claim(
 
                 let amount = query_params.amount;
 
-                // 0.00500000000
-                if amount < 500_000_000 {
-                    return Err((StatusCode::BAD_REQUEST, "claim minimum is 0.005".to_string()));
+                // 0.00500000000 ORE
+                // if amount < 500_000_000 {
+                if amount < MIN_CLAIM_AMOUNT {
+                    let min_claim_amount_dec: f64 =
+                        (MIN_CLAIM_AMOUNT as f64) / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
+                    return Err((
+                        StatusCode::BAD_REQUEST,
+                        format!("claim minimum is {min_claim_amount_dec} ORE"),
+                    ));
                 }
 
                 if let Ok(miner_rewards) =

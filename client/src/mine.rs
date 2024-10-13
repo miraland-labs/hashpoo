@@ -205,6 +205,7 @@ pub struct MineArgs {
         help = "Number of threads to use while mining"
     )]
     pub threads: u32,
+
     #[arg(
         long,
         value_name = "BUFFER",
@@ -246,7 +247,7 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
             .send()
             .await
         {
-            Ok(res) =>
+            Ok(res) => {
                 if res.status().as_u16() >= 200 && res.status().as_u16() < 300 {
                     if let Ok(ts) = res.text().await {
                         if let Ok(ts) = ts.parse::<u64>() {
@@ -265,7 +266,8 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                     println!("Failed to get timestamp from server. StatusCode: {}", res.status());
                     tokio::time::sleep(Duration::from_secs(5)).await;
                     continue;
-                },
+                }
+            },
             Err(e) => {
                 println!("Failed to get timestamp from server.\nError: {}", e);
                 tokio::time::sleep(Duration::from_secs(5)).await;
@@ -351,10 +353,11 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                     ControlFlow::Break(_) => {
                                         break;
                                     },
-                                    ControlFlow::Continue(got_start_mining) =>
+                                    ControlFlow::Continue(got_start_mining) => {
                                         if got_start_mining {
                                             last_start_mine_instant = Instant::now();
-                                        },
+                                        }
+                                    },
                                 }
 
                                 if last_start_mine_instant.elapsed().as_secs() >= 120 {
@@ -629,7 +632,7 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                     // Stop the spinner after mining is done
                                     pb.finish_and_clear();
                                     println!(
-                                        "✨ Mission completed! Best diff found: {}",
+                                        "✨ Mission completed! Found best diff: {}",
                                         best_difficulty
                                     );
                                     println!("Processed: {}", total_nonces_checked);
@@ -719,14 +722,15 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
             },
             Err(e) => {
                 match e {
-                    tokio_tungstenite::tungstenite::Error::Http(e) =>
+                    tokio_tungstenite::tungstenite::Error::Http(e) => {
                         if let Some(body) = e.body() {
                             println!("Error: {:?}", String::from_utf8(body.to_vec()));
                         } else {
                             println!("Http Error: {:?}", e);
-                        },
+                        }
+                    },
                     _ => {
-                        println!("Error: {:?}", e);
+                        println!("Other tungstenite Error: {:?}", e);
                     },
                 }
                 tokio::time::sleep(Duration::from_secs(3)).await;

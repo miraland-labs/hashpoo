@@ -3,10 +3,19 @@ use {
     clap::Parser,
     colored::*,
     inquire::{InquireError, Text},
+    ore_api::consts::TOKEN_DECIMALS as ORE_TOKEN_DECIMALS,
     solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::Signer},
     spl_token::amount_to_ui_amount,
     std::{str::FromStr, time::Duration},
 };
+
+// 0.00500000000 ORE
+// const MIN_CLAIM_AMOUNT: u64 = 500_000_000; // grains
+const MIN_CLAIM_AMOUNT: u64 = 1_000_000; // for test
+
+// 0.00400000000 ORE
+// const CREATE_ATA_DEDUCTION: u64 = 400_000_000; // grains
+const CREATE_ATA_DEDUCTION: u64 = 100_000; // for test
 
 #[derive(Debug, Parser)]
 pub struct ClaimArgs {
@@ -17,7 +26,11 @@ pub struct ClaimArgs {
         help = "Wallet Public Key to receive the claimed Ore to."
     )]
     pub receiver_pubkey: Option<String>,
-    #[arg(long, value_name = "AMOUNT", help = "Amount of ore to claim. (Minimum of 0.005 ORE)")]
+    #[arg(
+        long,
+        value_name = "AMOUNT",
+        help = "Amount of ore to claim. (Minimum of {MIN_CLAIM_AMOUNT} ORE)"
+    )]
     pub amount: Option<f64>,
     #[arg(long, short, action, help = "Auto approve confirmations.")]
     pub y: bool,
@@ -56,7 +69,8 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
         parsed_balance
     } else {
         // If the wallet balance failed to parse
-        println!("\n  Note: A 0.004 ORE fee will be deducted from your claim amount to cover the cost\n  of Token Account Creation. This is a one time fee used to create the ORE Token Account.");
+        // println!("\n  Note: A 0.004 ORE fee will be deducted from your claim amount to cover the cost\n  of Token Account Creation. This is a one time fee used to create the ORE Token Account.");
+        println!("\n  Note: A {CREATE_ATA_DEDUCTION} ORE fee will be deducted from your claim amount to cover the cost\n  of Token Account Creation. This is a one time fee used to create the ORE Token Account.");
         0.0
     };
 
@@ -79,16 +93,18 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
     println!("  Miner Unclaimed Rewards:      {:.11} ORE", rewards);
     println!("  Receiving Wallet Ore Balance: {:.11} ORE", balance);
 
-    let minimum_claim_amount = 0.005;
+    // let minimum_claim_amount = 0.005;
+    let minimum_claim_amount: f64 =
+        (MIN_CLAIM_AMOUNT as f64) / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
     if rewards < minimum_claim_amount {
         println!();
-        println!("  You have not reached the required claim limit of 0.005 ORE.");
+        println!("  You have not reached the required claim limit of {minimum_claim_amount} ORE.");
         println!("  Keep mining to accumulate more rewards before you can withdraw.");
         return;
     }
 
     // Convert balance to grains
-    let balance_grains = (rewards * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64)) as u64;
+    let balance_grains = (rewards * 10f64.powf(ORE_TOKEN_DECIMALS as f64)) as u64;
 
     // If balance is zero, inform the user and return to keypair selection
     if balance_grains == 0 {
@@ -103,10 +119,10 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
         if claim_amount < minimum_claim_amount {
             if claim_amount != 0.0 {
                 // Only show the message if they previously entered an invalid value
-                println!("  Please enter a number above 0.005.");
+                println!("  Please enter a number above {minimum_claim_amount}.");
             }
 
-            match Text::new("\n  Enter the amount to claim (minimum 0.005 ORE or 'esc' to cancel):")
+            match Text::new("\n  Enter the amount to claim (minimum {minimum_claim_amount} ORE or 'esc' to cancel):")
                 .prompt()
             {
                 Ok(input) => {
@@ -116,9 +132,9 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
                     }
 
                     claim_amount = match input.trim().parse::<f64>() {
-                        Ok(val) if val >= 0.005 => val,
+                        Ok(val) if val >= minimum_claim_amount => val,
                         _ => {
-                            println!("  Please enter a valid number above 0.005.");
+                            println!("  Please enter a valid number above {minimum_claim_amount}.");
                             continue;
                         },
                     };
@@ -138,19 +154,18 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
     }
 
     // Convert the claim amount to the smallest unit
-    let mut claim_amount_grains =
-        (claim_amount * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64)) as u64;
+    let mut claim_amount_grains = (claim_amount * 10f64.powf(ORE_TOKEN_DECIMALS as f64)) as u64;
 
     // Auto-adjust the claim amount if it exceeds the available balance
     if claim_amount_grains > balance_grains {
         println!(
             "  You do not have enough rewards to claim {} ORE.",
-            amount_to_ui_amount(claim_amount_grains, ore_api::consts::TOKEN_DECIMALS)
+            amount_to_ui_amount(claim_amount_grains, ORE_TOKEN_DECIMALS)
         );
         claim_amount_grains = balance_grains;
         println!(
             "  Adjusting claim amount to the maximum available: {} ORE.",
-            amount_to_ui_amount(claim_amount_grains, ore_api::consts::TOKEN_DECIMALS)
+            amount_to_ui_amount(claim_amount_grains, ORE_TOKEN_DECIMALS)
         );
     }
 
@@ -159,14 +174,14 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
         match Text::new(
             &format!(
                 "  Are you sure you want to claim {} ORE? (Y/n or 'esc' to cancel)",
-                amount_to_ui_amount(claim_amount_grains, ore_api::consts::TOKEN_DECIMALS)
+                amount_to_ui_amount(claim_amount_grains, ORE_TOKEN_DECIMALS)
             )
             .red()
             .to_string(),
         )
         .prompt()
         {
-            Ok(confirm) =>
+            Ok(confirm) => {
                 if confirm.trim().eq_ignore_ascii_case("esc") {
                     println!("  Claim canceled.");
                     return;
@@ -174,7 +189,8 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
                 } else {
                     println!("  Claim canceled.");
                     return;
-                },
+                }
+            },
             Err(InquireError::OperationCanceled) => {
                 println!("  Claim operation canceled.");
                 return;
@@ -207,7 +223,7 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
 
     println!(
         "  Sending claim request for {} ORE...",
-        amount_to_ui_amount(claim_amount_grains, ore_api::consts::TOKEN_DECIMALS)
+        amount_to_ui_amount(claim_amount_grains, ORE_TOKEN_DECIMALS)
     );
 
     let mut signed_msg = vec![];
@@ -239,7 +255,7 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
             "QUEUED" => {
                 println!("  Claim is already queued for processing.");
             },
-            other =>
+            other => {
                 if let Ok(time) = other.parse::<u64>() {
                     let time_left = 1800 - time;
                     let secs = time_left % 60;
@@ -250,7 +266,8 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
                     );
                 } else {
                     println!("  Unexpected response: {}", other);
-                },
+                }
+            },
         },
         Err(e) => {
             println!("  ERROR: {}", e);

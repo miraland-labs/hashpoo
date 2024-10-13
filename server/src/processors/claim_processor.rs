@@ -2,7 +2,7 @@ use {
     crate::{
         database::Database,
         utils::{self, ORE_TOKEN_DECIMALS},
-        ClaimsQueue, InsertClaim, InsertTransaction,
+        ClaimsQueue, InsertClaim, InsertTransaction, CREATE_ATA_DEDUCTION,
     },
     solana_client::{nonblocking::rpc_client::RpcClient, rpc_config::RpcSendTransactionConfig},
     solana_sdk::{
@@ -77,9 +77,10 @@ pub async fn claim_processor(
             let amount = claim_queue_item.amount;
 
             let mut claim_amount = amount;
-            // 0.00400000000
+            // 0.00400000000 ORE
             if is_creating_ata {
-                claim_amount = amount - 400_000_000
+                // claim_amount = amount - 400_000_000
+                claim_amount = amount - CREATE_ATA_DEDUCTION
             }
             // claim from mini pool (same as operator's solo proof)
             let ix = utils::get_claim_ix(wallet.pubkey(), receiver_token_account, claim_amount);

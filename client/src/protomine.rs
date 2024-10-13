@@ -1,10 +1,12 @@
 use {
+    crate::database::{Database, PoolSubmissionResult},
     base64::prelude::*,
     clap::{arg, Parser},
     drillx::equix,
     futures_util::{SinkExt, StreamExt},
     rayon::prelude::*,
     solana_sdk::{signature::Keypair, signer::Signer},
+    spl_token::amount_to_ui_amount,
     std::{
         ops::{ControlFlow, Range},
         sync::{
@@ -30,19 +32,182 @@ const MIN_CHUNK_SIZE: u64 = 3_000_000;
 const MAX_CHUNK_SIZE: u64 = 30_000_000;
 
 #[derive(Debug)]
+pub struct ServerMessagePoolSubmissionResult {
+    difficulty: u32,
+    total_balance: f64,
+    total_rewards: f64,
+    top_stake: f64,
+    multiplier: f64,
+    active_miners: u32,
+    challenge: [u8; 32],
+    best_nonce: u64,
+    miner_supplied_difficulty: u32,
+    miner_earned_rewards: f64,
+    miner_percentage: f64,
+}
+
+impl ServerMessagePoolSubmissionResult {
+    pub fn new_from_bytes(b: Vec<u8>) -> Self {
+        let mut b_index = 1;
+
+        let data_size = size_of::<u32>();
+        let mut data_bytes = [0u8; size_of::<u32>()];
+        for i in 0..data_size {
+            data_bytes[i] = b[i + b_index];
+        }
+        b_index += data_size;
+        let difficulty = u32::from_le_bytes(data_bytes);
+
+        let data_size = size_of::<f64>();
+        let mut data_bytes = [0u8; size_of::<f64>()];
+        for i in 0..data_size {
+            data_bytes[i] = b[i + b_index];
+        }
+        b_index += data_size;
+        let total_balance = f64::from_le_bytes(data_bytes);
+
+        let data_size = size_of::<f64>();
+        let mut data_bytes = [0u8; size_of::<f64>()];
+        for i in 0..data_size {
+            data_bytes[i] = b[i + b_index];
+        }
+        b_index += data_size;
+        let total_rewards = f64::from_le_bytes(data_bytes);
+
+        let data_size = size_of::<f64>();
+        let mut data_bytes = [0u8; size_of::<f64>()];
+        for i in 0..data_size {
+            data_bytes[i] = b[i + b_index];
+        }
+        b_index += data_size;
+        let top_stake = f64::from_le_bytes(data_bytes);
+
+        let data_size = size_of::<f64>();
+        let mut data_bytes = [0u8; size_of::<f64>()];
+        for i in 0..data_size {
+            data_bytes[i] = b[i + b_index];
+        }
+        b_index += data_size;
+        let multiplier = f64::from_le_bytes(data_bytes);
+
+        let data_size = size_of::<u32>();
+        let mut data_bytes = [0u8; size_of::<u32>()];
+        for i in 0..data_size {
+            data_bytes[i] = b[i + b_index];
+        }
+        b_index += data_size;
+        let active_miners = u32::from_le_bytes(data_bytes);
+
+        let data_size = 32;
+        let mut data_bytes = [0u8; 32];
+        for i in 0..data_size {
+            data_bytes[i] = b[i + b_index];
+        }
+        b_index += data_size;
+        let challenge = data_bytes.clone();
+
+        let data_size = size_of::<u64>();
+        let mut data_bytes = [0u8; size_of::<u64>()];
+        for i in 0..data_size {
+            data_bytes[i] = b[i + b_index];
+        }
+        b_index += data_size;
+        let best_nonce = u64::from_le_bytes(data_bytes);
+
+        let data_size = size_of::<u32>();
+        let mut data_bytes = [0u8; size_of::<u32>()];
+        for i in 0..data_size {
+            data_bytes[i] = b[i + b_index];
+        }
+        b_index += data_size;
+        let miner_supplied_difficulty = u32::from_le_bytes(data_bytes);
+
+        let data_size = size_of::<f64>();
+        let mut data_bytes = [0u8; size_of::<f64>()];
+        for i in 0..data_size {
+            data_bytes[i] = b[i + b_index];
+        }
+        b_index += data_size;
+        let miner_earned_rewards = f64::from_le_bytes(data_bytes);
+
+        let data_size = size_of::<f64>();
+        let mut data_bytes = [0u8; size_of::<f64>()];
+        for i in 0..data_size {
+            data_bytes[i] = b[i + b_index];
+        }
+        //b_index += data_size;
+        let miner_percentage = f64::from_le_bytes(data_bytes);
+
+        ServerMessagePoolSubmissionResult {
+            difficulty,
+            total_balance,
+            total_rewards,
+            top_stake,
+            multiplier,
+            active_miners,
+            challenge,
+            best_nonce,
+            miner_supplied_difficulty,
+            miner_earned_rewards,
+            miner_percentage,
+        }
+    }
+
+    pub fn _to_message_binary(&self) -> Vec<u8> {
+        let mut bin_data = Vec::new();
+        bin_data.push(1u8);
+        bin_data.extend_from_slice(&self.difficulty.to_le_bytes());
+        bin_data.extend_from_slice(&self.total_balance.to_le_bytes());
+        bin_data.extend_from_slice(&self.total_rewards.to_le_bytes());
+        bin_data.extend_from_slice(&self.top_stake.to_le_bytes());
+        bin_data.extend_from_slice(&self.multiplier.to_le_bytes());
+        bin_data.extend_from_slice(&self.active_miners.to_le_bytes());
+        bin_data.extend_from_slice(&self.challenge);
+        bin_data.extend_from_slice(&self.best_nonce.to_le_bytes());
+        bin_data.extend_from_slice(&self.miner_supplied_difficulty.to_le_bytes());
+        bin_data.extend_from_slice(&self.miner_earned_rewards.to_le_bytes());
+        bin_data.extend_from_slice(&self.miner_percentage.to_le_bytes());
+
+        bin_data
+    }
+}
+
+#[derive(Debug)]
 pub enum ServerMessage {
     StartMining([u8; 32], Range<u64>, u64),
+    PoolSubmissionResult(ServerMessagePoolSubmissionResult),
 }
+
+// #[derive(Debug, Clone, Copy)]
+// pub struct ThreadSubmission {
+//     nonce: u64,
+//     difficulty: u32,
+//     pub d: [u8; 16], // digest
+// }
+
+// #[derive(Debug, Clone, Copy)]
+// pub enum MessageSubmissionProcessor {
+//     Submission(ThreadSubmission),
+//     Reset,
+//     Finish,
+// }
 
 #[derive(Debug, Parser)]
 pub struct MineArgs {
     #[arg(
         long,
         value_name = "threads",
-        default_value = "1",
+        default_value = "4",
         help = "Number of threads to use while mining"
     )]
     pub threads: usize,
+    // #[arg(
+    //     long,
+    //     value_name = "BUFFER",
+    //     default_value = "0",
+    //     help = "Buffer time in seconds, to send the submission to the server earlier"
+    // )]
+    // pub buffer: u32,
 }
 
 struct MiningResult {
@@ -180,12 +345,9 @@ pub async fn protomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
 
     loop {
         let base_url = url.clone();
+        // MI: lan addr is allowed, example: 192.168.xx.xxx:3000
         let mut ws_url_str =
             if unsecure { format!("ws://{}/v1/ws", url) } else { format!("wss://{}/v1/ws", url) };
-
-        // if !ws_url_str.ends_with('/') {
-        //     ws_url_str.push('/');
-        // }
 
         let client = reqwest::Client::new();
 
@@ -196,9 +358,9 @@ pub async fn protomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
             .send()
             .await
         {
-            Ok(response) => match response.text().await {
-                Ok(ts) =>
-                    match ts.parse::<u64>() {
+            Ok(response) => {
+                match response.text().await {
+                    Ok(ts) => match ts.parse::<u64>() {
                         Ok(timestamp) => timestamp,
                         Err(_) => {
                             eprintln!("Server response body for /timestamp failed to parse, contact admin.");
@@ -206,14 +368,15 @@ pub async fn protomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
                             continue;
                         },
                     },
-                Err(_) => {
-                    eprintln!("Server response body for /timestamp is empty, contact admin.");
-                    tokio::time::sleep(Duration::from_secs(3)).await;
-                    continue;
-                },
+                    Err(_) => {
+                        eprintln!("Server response body for /timestamp is empty, contact admin.");
+                        tokio::time::sleep(Duration::from_secs(3)).await;
+                        continue;
+                    },
+                }
             },
-            Err(_) => {
-                eprintln!("Server restarting, trying again in 3 seconds...");
+            Err(e) => {
+                eprintln!("Failed to get timestamp from server.\nError: {}", e);
                 tokio::time::sleep(Duration::from_secs(3)).await;
                 continue;
             },
@@ -274,6 +437,22 @@ pub async fn protomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
 
                 let _ = sender.send(Message::Binary(bin_data)).await;
 
+                let (db_sender, mut db_receiver) =
+                    tokio::sync::mpsc::unbounded_channel::<PoolSubmissionResult>();
+
+                tokio::spawn(async move {
+                    let app_db = Database::new();
+
+                    while let Some(msg) = db_receiver.recv().await {
+                        app_db.add_new_pool_submission(msg);
+                        let total_earnings = amount_to_ui_amount(
+                            app_db.get_todays_earnings(),
+                            ore_api::consts::TOKEN_DECIMALS,
+                        );
+                        println!("Todays Earnings: {} ORE\n", total_earnings);
+                    }
+                });
+
                 // receive messages
                 while let Some(msg) = message_receiver.recv().await {
                     match msg {
@@ -290,6 +469,9 @@ pub async fn protomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
                             let hash_timer = Instant::now();
 
                             let cutoff_time = cutoff; // Use the provided cutoff directly
+
+                            // // Adjust the cutoff with the buffer
+                            // let cutoff_time = cutoff.saturating_sub(args.buffer as u64);
 
                             let (best_nonce, best_difficulty, best_hash, total_nonces_checked) =
                                 optimized_mining_rayon(
@@ -354,6 +536,38 @@ pub async fn protomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
 
                             let _ = sender.send(Message::Binary(bin_data)).await;
                         },
+                        ServerMessage::PoolSubmissionResult(data) => {
+                            let pool_earned = (data.total_rewards
+                                * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64))
+                                as u64;
+                            let miner_earned = (data.miner_earned_rewards
+                                * 10f64.powf(ore_api::consts::TOKEN_DECIMALS as f64))
+                                as u64;
+                            let ps = PoolSubmissionResult::new(
+                                data.difficulty,
+                                pool_earned,
+                                data.miner_percentage,
+                                data.miner_supplied_difficulty,
+                                miner_earned,
+                            );
+                            let _ = db_sender.send(ps);
+
+                            let message = format!(
+                                        "\n\nChallenge: {}\nPool Submitted Difficulty: {}\nPool Earned:  {:.11} ORE\nPool Balance: {:.11} ORE\nTop Stake:    {:.11} ORE\nPool Multiplier: {:.2}x\n----------------------\nActive Miners: {}\n----------------------\nMiner Submitted Difficulty: {}\nMiner Earned: {:.11} ORE\n{:.2}% of total pool reward\n",
+                                        BASE64_STANDARD.encode(data.challenge),
+                                        data.difficulty,
+                                        data.total_rewards,
+                                        data.total_balance,
+                                        data.top_stake,
+                                        data.multiplier,
+                                        data.active_miners,
+                                        data.miner_supplied_difficulty,
+                                        data.miner_earned_rewards,
+                                        data.miner_percentage
+                                    );
+                            let _ = data.best_nonce;
+                            println!("{}", message);
+                        },
                     }
                 }
 
@@ -361,12 +575,13 @@ pub async fn protomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
             },
             Err(e) => {
                 match e {
-                    tokio_tungstenite::tungstenite::Error::Http(e) =>
+                    tokio_tungstenite::tungstenite::Error::Http(e) => {
                         if let Some(body) = e.body() {
                             eprintln!("Error: {:?}", String::from_utf8_lossy(body));
                         } else {
                             eprintln!("Http Error: {:?}", e);
-                        },
+                        }
+                    },
                     _ => {
                         eprintln!("Other tungstenite Error: {:?}", e);
                     },
@@ -426,6 +641,12 @@ fn process_message(
 
                         let _ = message_channel.send(msg);
                     }
+                },
+                1 => {
+                    let msg = ServerMessage::PoolSubmissionResult(
+                        ServerMessagePoolSubmissionResult::new_from_bytes(b),
+                    );
+                    let _ = message_channel.send(msg);
                 },
                 _ => {
                     println!("Failed to parse server message type");
