@@ -686,7 +686,9 @@ async fn run_command(
                             match input.trim().parse::<u32>() {
                                 Ok(valid_threads)
                                     if valid_threads > 0 && valid_threads <= max_threads as u32 =>
-                                    break valid_threads,
+                                {
+                                    break valid_threads
+                                },
                                 _ => {
                                     println!("  Invalid thread count. Please enter a number between 1 and {}.", max_threads);
                                 },
@@ -893,7 +895,7 @@ async fn run_command(
 
 async fn is_update_available() -> Result<bool, Box<dyn std::error::Error>> {
     let current_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
-    let latest_version_str = get_latest_crate_version("ore-hq-client").await?;
+    let latest_version_str = get_latest_crate_version("poolore-cli").await?;
     let latest_version = Version::parse(&latest_version_str)?;
 
     Ok(current_version < latest_version)
@@ -901,7 +903,7 @@ async fn is_update_available() -> Result<bool, Box<dyn std::error::Error>> {
 
 async fn update_client() -> Result<(), Box<dyn std::error::Error>> {
     let current_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
-    let latest_version_str = get_latest_crate_version("ore-hq-client").await?;
+    let latest_version_str = get_latest_crate_version("poolore-cli").await?;
     let latest_version = Version::parse(&latest_version_str)?;
 
     if current_version < latest_version {
@@ -911,7 +913,7 @@ async fn update_client() -> Result<(), Box<dyn std::error::Error>> {
 
         if confirm_update {
             println!("  Updating to version {}...", latest_version);
-            let status = Command::new("cargo").arg("install").arg("ore-hq-client").status()?;
+            let status = Command::new("cargo").arg("install").arg("poolore-cli").status()?;
             if status.success() {
                 println!("  Update completed successfully.");
                 println!("  Please restart the application to use the updated version.");

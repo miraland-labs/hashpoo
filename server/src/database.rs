@@ -1123,7 +1123,7 @@ impl Database {
         &self,
         sig: String,
     ) -> Result<TransactionId, DatabaseError> {
-        let sql = "SELECT id FROM transaction WHERE signature = $1";
+        let sql = "SELECT id FROM transactions WHERE signature = $1";
 
         if let Ok(db_conn) = self.get_connection().await {
             let stmt = db_conn.prepare_cached(sql).await.unwrap();

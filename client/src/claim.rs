@@ -29,7 +29,7 @@ pub struct ClaimArgs {
     #[arg(
         long,
         value_name = "AMOUNT",
-        help = "Amount of ore to claim. (Minimum of {MIN_CLAIM_AMOUNT} ORE)"
+        help = format!("Amount of ore to claim. (Minimum of {MIN_CLAIM_AMOUNT} ORE)")
     )]
     pub amount: Option<f64>,
     #[arg(long, short, action, help = "Auto approve confirmations.")]
@@ -91,7 +91,7 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
     let rewards = rewards_response.parse::<f64>().unwrap_or(0.0);
 
     println!("  Miner Unclaimed Rewards:      {:.11} ORE", rewards);
-    println!("  Receiving Wallet Ore Balance: {:.11} ORE", balance);
+    println!("  Receiving Wallet ORE Balance: {:.11} ORE", balance);
 
     // let minimum_claim_amount = 0.005;
     let minimum_claim_amount: f64 =
@@ -122,7 +122,7 @@ pub async fn claim(args: ClaimArgs, key: Keypair, url: String, unsecure: bool) {
                 println!("  Please enter a number above {minimum_claim_amount}.");
             }
 
-            match Text::new("\n  Enter the amount to claim (minimum {minimum_claim_amount} ORE or 'esc' to cancel):")
+            match Text::new(&format!("\n  Enter the amount to claim (minimum {minimum_claim_amount} ORE or 'esc' to cancel):"))
                 .prompt()
             {
                 Ok(input) => {
