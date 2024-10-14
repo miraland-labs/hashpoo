@@ -96,12 +96,12 @@ mod utils;
 // const MIN_HASHPOWER: u64 = 5;
 
 // 0.00500000000 ORE
-// const MIN_CLAIM_AMOUNT: u64 = 500_000_000; // grains
-const MIN_CLAIM_AMOUNT: u64 = 1_000_000; // for test
+const MIN_CLAIM_AMOUNT: u64 = 500_000_000; // grains
+                                           // const MIN_CLAIM_AMOUNT: u64 = 1_000_000; // for test
 
 // 0.00400000000 ORE
-// const CREATE_ATA_DEDUCTION: u64 = 400_000_000; // grains
-const CREATE_ATA_DEDUCTION: u64 = 100_000; // for test
+const CREATE_ATA_DEDUCTION: u64 = 400_000_000; // grains
+                                               // const CREATE_ATA_DEDUCTION: u64 = 100_000; // for test
 
 // MI: if 0, rpc node will retry the tx until it is finalized or until the blockhash expires
 const RPC_RETRIES: usize = 3; // 5
@@ -253,6 +253,7 @@ pub struct MineConfig {
     // mining pool db table rowid/identity if powered by dbms
     pool_id: i32,
     stats_enabled: bool,
+    #[allow(dead_code)]
     commissions_pubkey: String,
     commissions_miner_id: i64,
 }

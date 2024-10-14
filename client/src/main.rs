@@ -19,6 +19,7 @@ use {
         process::Command,
         str::FromStr,
     },
+    turbomine::{turbomine, MineArgs as TurboMineArgs},
 };
 
 mod balance;
@@ -30,6 +31,7 @@ mod generate_key;
 mod mine;
 mod protomine;
 mod signup;
+mod turbomine;
 // mod stake_balance;
 // mod undelegate_stake;
 
@@ -71,6 +73,8 @@ enum Commands {
     Mine(MineArgs),
     #[command(about = "Connect to pool and start mining. (Protomine Implementation)")]
     Protomine(ProtoMineArgs),
+    #[command(about = "Connect to pool and start mining. (Turbomine Implementation)")]
+    Turbomine(TurboMineArgs),
     #[command(about = "Transfer SOL to the pool authority to sign up.")]
     Signup(SignupArgs),
     #[command(about = "Claim rewards.")]
@@ -643,6 +647,9 @@ async fn run_command(
         Some(Commands::Protomine(args)) => {
             protomine(args, key, base_url, unsecure_conn).await;
         },
+        Some(Commands::Turbomine(args)) => {
+            turbomine(args, key, base_url, unsecure_conn).await;
+        },
         Some(Commands::Signup(args)) => {
             signup(args, base_url, key, unsecure_conn).await;
         },
@@ -715,7 +722,6 @@ async fn run_command(
                         let args = MineArgs { threads, buffer };
                         mine(args, key, base_url, unsecure_conn).await;
                     },
-
                     "  ProtoMine" => {
                         let threads: u32 = loop {
                             let input = Text::new("  Enter the number of threads:")
@@ -732,6 +738,40 @@ async fn run_command(
 
                         let args = ProtoMineArgs { threads: threads.try_into().unwrap() };
                         protomine(args, key, base_url, unsecure_conn).await;
+                    },
+                    "  TurboMine" => {
+                        let threads: u32 = loop {
+                            let input = Text::new("  Enter the number of threads:")
+                                .with_default("4")
+                                .prompt()?;
+
+                            match input.trim().parse::<u32>() {
+                                Ok(valid_threads) if valid_threads > 0 => break valid_threads,
+                                _ => {
+                                    println!("  Invalid input. Please enter a valid number greater than 0.");
+                                },
+                            }
+                        };
+
+                        // Ask for buffer time
+                        let buffer: u32 = loop {
+                            let buffer_input =
+                                Text::new("  Enter the buffer time in seconds (optional):")
+                                    .with_default("0")
+                                    .prompt()?;
+
+                            match buffer_input.trim().parse::<u32>() {
+                                Ok(valid_buffer) => break valid_buffer,
+                                _ => {
+                                    println!(
+                                        "  Invalid buffer input. Please enter a valid number."
+                                    );
+                                },
+                            }
+                        };
+
+                        let args = TurboMineArgs { threads: threads.try_into().unwrap(), buffer };
+                        turbomine(args, key, base_url, unsecure_conn).await;
                     },
                     "  Sign up" => {
                         let use_different_pubkey = Confirm::new("  Would you like to sign up a different pubkey than your selected keypair's pubkey?")

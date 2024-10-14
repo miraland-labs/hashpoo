@@ -10,12 +10,12 @@ use {
 };
 
 // 0.00500000000 ORE
-// const MIN_CLAIM_AMOUNT: u64 = 500_000_000; // grains
-const MIN_CLAIM_AMOUNT: u64 = 1_000_000; // for test
+const MIN_CLAIM_AMOUNT: u64 = 500_000_000; // grains
+                                           // const MIN_CLAIM_AMOUNT: u64 = 1_000_000; // for test
 
 // 0.00400000000 ORE
-// const CREATE_ATA_DEDUCTION: u64 = 400_000_000; // grains
-const CREATE_ATA_DEDUCTION: u64 = 100_000; // for test
+const CREATE_ATA_DEDUCTION: u64 = 400_000_000; // grains
+                                               // const CREATE_ATA_DEDUCTION: u64 = 100_000; // for test
 
 #[derive(Debug, Parser)]
 pub struct ClaimArgs {
@@ -23,13 +23,13 @@ pub struct ClaimArgs {
         long,
         short('r'),
         value_name = "RECEIVER_PUBKEY",
-        help = "Wallet Public Key to receive the claimed Ore to."
+        help = "Wallet Public Key to receive the claimed ORE to."
     )]
     pub receiver_pubkey: Option<String>,
     #[arg(
         long,
         value_name = "AMOUNT",
-        help = format!("Amount of ore to claim. (Minimum of {MIN_CLAIM_AMOUNT} ORE)")
+        help = format!("Amount of ORE to claim. (Minimum of {} ORE)", (MIN_CLAIM_AMOUNT as f64) / 10f64.powf(ORE_TOKEN_DECIMALS as f64))
     )]
     pub amount: Option<f64>,
     #[arg(long, short, action, help = "Auto approve confirmations.")]
