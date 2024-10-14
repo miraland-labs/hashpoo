@@ -76,7 +76,8 @@ pub async fn pool_mine_success_processor(
                     // let decimals = 10f64.powf(ORE_TOKEN_DECIMALS as f64);
                     let earned_rewards = hashpower_percent
                         .saturating_mul(total_rewards as u128)
-                        .saturating_div(1_000_000) as i64;
+                        .saturating_div(1_000_000) as u64
+                        as i64;
 
                     let new_earning = InsertEarning {
                         miner_id: msg_contribution.miner_id,
