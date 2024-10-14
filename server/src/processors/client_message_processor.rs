@@ -1,10 +1,6 @@
 use crate::{
-    AppState,
-    ClientMessage,
-    EpochHashes,
-    InternalMessageContribution,
-    LastPong,
-    // MIN_DIFF, MIN_HASHPOWER,
+    utils, AppState, ClientMessage, EpochHashes, InternalMessageContribution, LastPong,
+    HASHPOWER_CAP, MIN_DIFF, UNIT_HASHPOWER,
 };
 use {
     axum::extract::ws::Message,
@@ -129,13 +125,21 @@ pub async fn client_message_processor(
                                 // calculate rewards, only diff larger than min_difficulty(rather
                                 // than MIN_DIFF) qualifies rewards calc.
                                 // let mut hashpower = MIN_HASHPOWER * 2u64.pow(diff - MIN_DIFF);
-                                let hashpower = 2u64.pow(diff);
                                 // if hashpower > 81_920 {
                                 //     hashpower = 81_920;
                                 // }
                                 // if hashpower > 655_360 {
                                 //     hashpower = 655_360;
                                 // }
+
+                                // let hashpower = 2u64.pow(diff);
+                                let hashpower = utils::normalized_hashpower(
+                                    UNIT_HASHPOWER,
+                                    MIN_DIFF,
+                                    diff,
+                                    Some(HASHPOWER_CAP),
+                                );
+
                                 {
                                     let reader = epoch_hashes.read().await;
                                     let subs = reader.contributions.clone();

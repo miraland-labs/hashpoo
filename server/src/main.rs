@@ -89,7 +89,26 @@ mod rr_database;
 mod tpu;
 mod utils;
 
-// const MIN_DIFF: u32 = 8;
+// [diff]   [hashpower]        [noralized]
+// 08       256                1
+// 09       512                2
+// 10       1024               4
+// ...      ...                ...
+// 17       131,072            512
+// ...      ...                ...
+// 21       2,097,152	       8,192
+// 22       4,194,304	       16,384
+// 23       8,388,608	       32,768
+// 24       16,777,216	       65,536
+// 25       33,554,432	       131,072
+// 26       67,108,864	       262,144
+// 27       134,217,728	       524,288
+// 28       268,435,456	       1,048,576
+// 29       536,870,912	       2,097,152
+// 30       1,073,741,824      4,194,304
+const HASHPOWER_CAP: u64 = 32_768; // map to diff 23
+const MIN_DIFF: u32 = 8; // corresponds to current ORE program config
+const UNIT_HASHPOWER: u64 = 1;
 // MI
 // min hash power is matching with ore BASE_REWARD_RATE_MIN_THRESHOLD
 // min difficulty, matching with MIN_HASHPOWER.

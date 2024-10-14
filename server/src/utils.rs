@@ -321,6 +321,22 @@ pub fn play_sound() {
     }
 }
 
+pub fn normalized_hashpower(
+    unit_hashpower: u64,
+    base: u32,
+    diff: u32,
+    power_cap: Option<u64>,
+) -> u64 {
+    let mut hashpower = unit_hashpower * 2u64.pow(diff - base);
+    if let Some(power_cap) = power_cap {
+        if hashpower > power_cap {
+            hashpower = power_cap;
+        }
+    }
+
+    hashpower
+}
+
 pub fn _exists_file(file_path: &str) -> bool {
     // This function checks if a file (like db file) exists at the specified file path
     fs::metadata(file_path).is_ok()
