@@ -13,7 +13,7 @@ use {
         mem::size_of,
         ops::{ControlFlow, Range},
         sync::{
-            atomic::{AtomicBool, AtomicU64, Ordering},
+            atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
             Arc, Once,
         },
         time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -793,13 +793,13 @@ fn optimized_mining_rayon(
 
             // let mut core_best = MiningResult::new();
             let mut core_best = MiningResult::new(core_start);
+            let core_best_difficulty = Arc::new(AtomicU32::new(0));
             let mut local_nonces_checked = 0;
 
             'outer: for chunk_start in (core_start..core_end).step_by(chunk_size as usize) {
                 let chunk_end = (chunk_start + chunk_size).min(core_end);
                 for nonce in chunk_start..chunk_end {
                     if start_time.elapsed().as_secs() >= cutoff_time {
-                        // core_best = MiningResult::new(chunk_start);
                         break 'outer;
                     }
 
@@ -813,7 +813,10 @@ fn optimized_mining_rayon(
                         local_nonces_checked += 1;
                         let difficulty = hx.difficulty();
 
-                        if difficulty.gt(&MIN_DIFF) && difficulty > core_best.difficulty {
+                        // if difficulty.gt(&MIN_DIFF) && difficulty > core_best.difficulty {
+                        if difficulty.gt(&MIN_DIFF)
+                            && difficulty > core_best_difficulty.load(Ordering::Relaxed)
+                        {
                             // MI: solution-level, too much submissions
                             let thread_submission = ThreadSubmission { nonce, difficulty, d: hx.d };
                             if let Err(_) = processor_submission_sender
@@ -823,6 +826,8 @@ fn optimized_mining_rayon(
                                     "Failed to send found hash to internal submission processor"
                                 );
                             }
+
+                            core_best_difficulty.store(difficulty, Ordering::Relaxed);
 
                             core_best = MiningResult {
                                 nonce,
@@ -835,7 +840,7 @@ fn optimized_mining_rayon(
 
                     if nonce % 100 == 0 && start_time.elapsed().as_secs() >= cutoff_time {
                         // if core_best.difficulty >= 8 {
-                        if core_best.difficulty >= MIN_DIFF {
+                        if core_best_difficulty.load(Ordering::Relaxed) >= MIN_DIFF {
                             break 'outer;
                         }
                     }
