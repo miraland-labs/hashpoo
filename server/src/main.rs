@@ -520,14 +520,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let database = Database::new(dbms_settings.database_uri.into());
 
-    if !database::validate_dbms(&mut dbms_settings, database.clone()).await {
+    if (powered_by_dbms == &PoweredByDbms::Postgres || powered_by_dbms == &PoweredByDbms::Sqlite)
+        && !database::validate_dbms(&mut dbms_settings, database.clone()).await
+    {
         return Err("ORE mining pool db failed validation.".into());
     }
 
     let rr_database = Arc::new(RrDatabase::new(dbms_settings.database_rr_uri.into()));
-    let database = Arc::new(database);
 
-    if powered_by_dbms == &PoweredByDbms::Postgres {}
+    let database = Arc::new(database);
 
     let messaging_flags = get_messaging_flags();
 

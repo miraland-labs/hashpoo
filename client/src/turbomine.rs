@@ -799,9 +799,9 @@ fn optimized_mining_rayon(
             'outer: for chunk_start in (core_start..core_end).step_by(chunk_size as usize) {
                 let chunk_end = (chunk_start + chunk_size).min(core_end);
                 for nonce in chunk_start..chunk_end {
-                    if start_time.elapsed().as_secs() >= cutoff_time {
-                        break 'outer;
-                    }
+                    // if start_time.elapsed().as_secs() >= cutoff_time {
+                    //     break 'outer;
+                    // }
 
                     if stop_signal.load(Ordering::Relaxed) {
                         break 'outer;

@@ -586,7 +586,7 @@ pub async fn pool_submission_processor<'a>(
 
                                                     // info!(target: "server_log", "Pool Rewards: {} ORE", dec_pool_rewards);
                                                     // info!(target: "server_log", "Miners Rewards: {} ORE", dec_miners_rewards);
-                                                    // info!(target: "server_log", "Commission: {} ORE", dec_commissions);
+                                                    // info!(target: "server_log", "Operator Commission: {} ORE", dec_commissions);
 
                                                     // // Rewards processing step II: if powered by dbms, do database crud routines.
                                                     // let powered_by_dbms = POWERED_BY_DBMS.get_or_init(|| {
@@ -881,7 +881,7 @@ pub async fn pool_submission_processor<'a>(
 
                                             // info!(target: "server_log", "Pool Rewards: {} ORE", dec_pool_rewards);
                                             // info!(target: "server_log", "Miners Rewards: {} ORE", dec_miners_rewards);
-                                            // info!(target: "server_log", "Commission: {} ORE", dec_commissions);
+                                            // info!(target: "server_log", "Operator Commission: {} ORE", dec_commissions);
 
                                             // // Rewards processing step II: if powered by dbms, do database crud routines.
                                             // let powered_by_dbms =
@@ -1167,7 +1167,7 @@ pub async fn pool_submission_processor<'a>(
 
                                         info!(target: "server_log", "Pool Rewards: {} ORE", dec_pool_rewards);
                                         info!(target: "server_log", "Miners Rewards: {} ORE", dec_miners_rewards);
-                                        info!(target: "server_log", "Commission: {} ORE", dec_commissions);
+                                        info!(target: "server_log", "Operator Commission: {} ORE", dec_commissions);
 
                                         // Rewards processing step II: if powered by dbms, do database crud routines.
                                         let powered_by_dbms = POWERED_BY_DBMS.get_or_init(|| {
