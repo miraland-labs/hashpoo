@@ -35,6 +35,9 @@ use {
     },
 };
 
+// reconnect when inactive in seconds
+const WS_IDLE_TIMEOUT: u64 = 180; // 3 mins
+
 #[derive(Debug)]
 pub struct ServerMessagePoolSubmissionResult {
     difficulty: u32,
@@ -360,8 +363,9 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                     },
                                 }
 
-                                if last_start_mine_instant.elapsed().as_secs() >= 120 {
-                                    eprintln!("Last start mining message was over 2 minutes ago. Closing websocket for reconnection.");
+                                // MI, change from vanilla 120 to 180
+                                if last_start_mine_instant.elapsed().as_secs() >= WS_IDLE_TIMEOUT {
+                                    eprintln!("Last start mining message was over {} minutes ago. Closing websocket for reconnection.", WS_IDLE_TIMEOUT/60);
                                     break;
                                 }
                             },
