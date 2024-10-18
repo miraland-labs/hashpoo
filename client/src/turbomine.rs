@@ -845,7 +845,8 @@ fn optimized_mining_rayon(
                     if nonce % 100 == 0 && start_time.elapsed().as_secs() >= cutoff_time {
                         // if core_best.difficulty >= 8 {
                         if core_best_difficulty.load(Ordering::Relaxed) >= MIN_DIFF {
-                            break 'outer;
+                            // break 'outer;
+                            break; // for nonce
                         }
                     }
                 }
