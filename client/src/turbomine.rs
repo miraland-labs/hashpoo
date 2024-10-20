@@ -506,6 +506,7 @@ pub async fn turbomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
 
                                     let hash_timer = Instant::now();
 
+                                    // let r = running.clone();
                                     let (
                                         _best_nonce,
                                         best_difficulty,
@@ -604,6 +605,10 @@ pub async fn turbomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
                             }
                         }
                     });
+                    // Check if Ctrl+C was pressed
+                    if !running.load(Ordering::SeqCst) {
+                        return;
+                    }
                 }
 
                 // If the websocket message receiver finishes, also finish the solution submission
