@@ -517,6 +517,7 @@ pub async fn turbomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
                                         cutoff_time,
                                         threads,
                                         processor_submission_sender.clone(),
+                                        running,
                                     );
 
                                     let hash_time = hash_timer.elapsed();
@@ -770,6 +771,7 @@ fn optimized_mining_rayon(
     cutoff_time: u64,
     threads: usize,
     submission_sender: Arc<UnboundedSender<MessageSubmissionProcessor>>,
+    running: Arc<AtomicBool>,
 ) -> (u64, u32, drillx::Hash, u64) {
     let processor_submission_sender = submission_sender.clone();
     let stop_signal = Arc::new(AtomicBool::new(false));
@@ -808,6 +810,11 @@ fn optimized_mining_rayon(
                     // }
 
                     if stop_signal.load(Ordering::Relaxed) {
+                        break 'outer;
+                    }
+
+                    // Check if Ctrl+C was pressed
+                    if !running.load(Ordering::SeqCst) {
                         break 'outer;
                     }
 
