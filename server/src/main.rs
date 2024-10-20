@@ -143,7 +143,6 @@ fn get_messaging_flags() -> MessagingFlags {
     unsafe {
         INIT_MESSAGING_FLAGS.call_once(|| {
             let mut exists_slack_webhook = false;
-            // let mut SLACK_WEBHOOK = String::new();
 
             let key = "SLACK_WEBHOOK";
             match std::env::var(key) {
@@ -157,7 +156,6 @@ fn get_messaging_flags() -> MessagingFlags {
             }
 
             let mut exists_discord_webhook = false;
-            // let mut DISCORD_WEBHOOK = String::new();
             let key = "DISCORD_WEBHOOK";
             match std::env::var(key) {
                 Ok(val) => {
@@ -1485,11 +1483,7 @@ async fn ws_handler(
 
     // Signed authentication message is only valid for 30 seconds
     if (now - query_params.timestamp) >= 30 {
-        return Err((
-            StatusCode::UNAUTHORIZED,
-            // "Timestamp too old. Please double check your device time sync with internet.",
-            "Timestamp too old.",
-        ));
+        return Err((StatusCode::UNAUTHORIZED, "Timestamp too old."));
     }
 
     let powered_by_dbms = POWERED_BY_DBMS.get_or_init(|| {
@@ -1516,7 +1510,6 @@ async fn ws_handler(
                 Ok(db_miner) => {
                     miner = db_miner;
                 },
-                // Err(DatabaseError::QueryFailed) | Err(DatabaseError::InteractionFailed) => {
                 Err(DatabaseError::QueryFailed) => {
                     info!(target: "server_log", "Miner pubkey record missing from database. Inserting...");
                     let add_miner_result = database
@@ -1536,8 +1529,6 @@ async fn ws_handler(
                         Ok(db_pool) => {
                             pool = db_pool;
                         },
-                        // Err(DatabaseError::QueryFailed) | Err(DatabaseError::InteractionFailed)
-                        // => {
                         Err(DatabaseError::QueryFailed) => {
                             info!(target: "server_log", "Pool record missing from database. Inserting...");
                             let proof_pubkey = utils::mini_pool_proof_pubkey(wallet_pubkey);
@@ -1632,21 +1623,23 @@ async fn ws_handler(
             // NO DBMS FOUND
             warn!(target: "server_log", "WARNING: NO DBMS FOUND. NO CLAIM FOR REMOTE MINERS!");
             eprintln!("WARNING: NO DBMS FOUND. NO CLAIM FOR REMOTE MINERS!");
-            {
-                let mut already_connected = false;
-                for (_, client_connection) in app_state.read().await.sockets.iter() {
-                    if user_pubkey == client_connection.pubkey {
-                        already_connected = true;
-                        break;
-                    }
-                }
-                if already_connected {
-                    return Err((
-                        StatusCode::TOO_MANY_REQUESTS,
-                        "A client is already connected with that wallet",
-                    ));
-                }
-            };
+
+            // MI: comment out to allow multiple miners to use the same wallet.
+            // {
+            //     let mut already_connected = false;
+            //     for (_, client_connection) in app_state.read().await.sockets.iter() {
+            //         if user_pubkey == client_connection.pubkey {
+            //             already_connected = true;
+            //             break;
+            //         }
+            //     }
+            //     if already_connected {
+            //         return Err((
+            //             StatusCode::TOO_MANY_REQUESTS,
+            //             "A client is already connected with that wallet",
+            //         ));
+            //     }
+            // };
 
             if let Ok(signature) = Signature::from_str(signed_msg) {
                 let ts_msg = msg_timestamp.to_le_bytes();
