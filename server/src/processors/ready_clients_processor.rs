@@ -54,7 +54,12 @@ pub async fn ready_clients_processor(
             };
             let mut should_mine = true;
 
-            let cutoff = if cutoff <= 0 {
+            // only distribute challenge if 10 seconds or more is left
+            // or if there is no best_hash yet
+            // MI: client submits contribution followed by an immediate ready-up,
+            // which sometimes causes the challenge of the contribution to be redistributed
+            // because the server has not yet cutoff. set 10s buffer to avoid such cases.
+            let cutoff = if cutoff < 10 {
                 let solution = epoch_hashes.read().await.best_hash.solution;
                 if solution.is_some() {
                     should_mine = false;
