@@ -3857,7 +3857,7 @@ dependencies = [
 
 [[package]]
 name = "poolore-cli"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "base64 0.22.1",
  "bincode",
@@ -3894,7 +3894,7 @@ dependencies = [
 
 [[package]]
 name = "poolore-srv"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "axum",
  "axum-extra",

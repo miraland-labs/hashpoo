@@ -605,6 +605,7 @@ pub async fn turbomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
                             }
                         }
                     });
+
                     // Check if Ctrl+C was pressed
                     if !running.load(Ordering::SeqCst) {
                         return;
