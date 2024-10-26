@@ -7,17 +7,16 @@ use {
     generate_key::generate_key,
     inquire::{Confirm, Select, Text},
     mine::{mine, MineArgs},
-    protomine::{protomine, MineArgs as ProtoMineArgs},
     semver::Version,
     serde_json,
-    signup::{signup, SignupArgs},
-    solana_sdk::{pubkey::Pubkey, signature::read_keypair_file},
+    // signup::{signup, SignupArgs},
+    solana_sdk::signature::read_keypair_file,
     std::{
         fs,
         io::{self, BufRead, Write},
         path::PathBuf,
         process::Command,
-        str::FromStr,
+        // str::FromStr,
     },
     turbomine::{turbomine, MineArgs as TurboMineArgs},
 };
@@ -25,15 +24,11 @@ use {
 mod balance;
 mod claim;
 mod database;
-// mod delegate_stake;
 mod earnings;
 mod generate_key;
 mod mine;
-mod protomine;
 mod signup;
 mod turbomine;
-// mod stake_balance;
-// mod undelegate_stake;
 
 const CONFIG_FILE: &str = "keypair_list";
 
@@ -45,7 +40,7 @@ struct Args {
         long,
         value_name = "SERVER_URL",
         help = "URL of your pool server to connect to, it can also be your LAN ip address:port like: 172.xxx.xx.xxx:3000, 192.xxx.xx.xxx:3000",
-        default_value = "poolore.miraland.io:3000"
+        default_value = "poolore.miraland.io"
     )]
     url: String,
 
@@ -69,19 +64,16 @@ struct Args {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    #[command(about = "Connect to pool and start mining. (Default Implementation)")]
+    #[command(about = "Connect to pool and start mining. (Default Impl.)")]
     Mine(MineArgs),
-    #[command(about = "Connect to pool and start mining. (Protomine Implementation)")]
-    Protomine(ProtoMineArgs),
-    #[command(about = "Connect to pool and start mining. (Turbomine Implementation)")]
+    #[command(about = "Connect to pool and start mining. (Turbomine Impl.)")]
     Turbomine(TurboMineArgs),
-    #[command(about = "Transfer SOL to the pool authority to sign up.")]
-    Signup(SignupArgs),
+    // #[command(about = "Transfer SOL to the pool authority to sign up.")]
+    // Signup(SignupArgs),
     #[command(about = "Claim rewards.")]
     Claim(ClaimArgs),
     #[command(about = "Display current ore token balance.")]
     Balance,
-    #[command(about = "Delegate stake for the pool miner.")]
     #[command(about = "Generate a new solana keypair for mining.")]
     Keygen,
     #[command(about = "Displays locally tracked earnings.")]
@@ -542,26 +534,15 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         println!("  ** A new version of the client is available! **");
     }
 
-    let mut options = vec![
+    let options = vec![
         "  Mine",
-        "  Sign up",
+        // "  Sign up",
+        "  Turbo Mine",
         "  Claim Rewards",
         "  View Balances",
-        // "  Stake",
-        // "  Unstake",
         "  Generate Keypair",
-        "  Update Client",
         "  Exit",
     ];
-
-    if update_available {
-        for option in options.iter_mut() {
-            if option.trim() == "Update Client" {
-                *option = "  Update Client (Available)";
-                break;
-            }
-        }
-    }
 
     println!();
 
@@ -571,7 +552,7 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
             &format!("Welcome to Poolore Client v{}, what would you like to do?", version),
             options,
         )
-        .with_page_size(9) // Adjusted page size after adding an option
+        .with_page_size(12)
         .with_vim_mode(vim_mode)
         .prompt()
         {
@@ -644,30 +625,18 @@ async fn run_command(
         Some(Commands::Mine(args)) => {
             mine(args, key, base_url, unsecure_conn).await;
         },
-        Some(Commands::Protomine(args)) => {
-            protomine(args, key, base_url, unsecure_conn).await;
-        },
         Some(Commands::Turbomine(args)) => {
             turbomine(args, key, base_url, unsecure_conn).await;
         },
-        Some(Commands::Signup(args)) => {
-            signup(args, base_url, key, unsecure_conn).await;
-        },
+        // Some(Commands::Signup(args)) => {
+        //     signup(args, base_url, key, unsecure_conn).await;
+        // },
         Some(Commands::Claim(args)) => {
             claim::claim(args, key, base_url, unsecure_conn).await;
         },
         Some(Commands::Balance) => {
             balance(&key, base_url, unsecure_conn).await;
         },
-        // Some(Commands::Stake(args)) => {
-        //     delegate_stake::delegate_stake(args, key, base_url, unsecure_conn).await;
-        // },
-        // Some(Commands::Unstake(args)) => {
-        //     undelegate_stake::undelegate_stake(args, &key, base_url, unsecure_conn).await;
-        // },
-        // Some(Commands::StakeBalance) => {
-        //     stake_balance::stake_balance(&key, base_url, unsecure_conn).await;
-        // },
         Some(Commands::Keygen) => {
             generate_key::generate_key();
         },
@@ -722,33 +691,27 @@ async fn run_command(
                         let args = MineArgs { threads, buffer };
                         mine(args, key, base_url, unsecure_conn).await;
                     },
-                    "  ProtoMine" => {
+                    "  Turbo Mine" => {
+                        let core_ids = get_core_ids().unwrap();
+                        let max_threads = core_ids.len();
+
+                        // Ask for the number of threads
                         let threads: u32 = loop {
-                            let input = Text::new("  Enter the number of threads:")
-                                .with_default("4")
-                                .prompt()?;
+                            let input = Text::new(&format!(
+                                "  Enter the number of threads (default: {}):",
+                                max_threads
+                            ))
+                            .with_default(&max_threads.to_string())
+                            .prompt()?;
 
                             match input.trim().parse::<u32>() {
-                                Ok(valid_threads) if valid_threads > 0 => break valid_threads,
-                                _ => {
-                                    println!("  Invalid input. Please enter a valid number greater than 0.");
+                                Ok(valid_threads)
+                                    if valid_threads > 0 && valid_threads <= max_threads as u32 =>
+                                {
+                                    break valid_threads
                                 },
-                            }
-                        };
-
-                        let args = ProtoMineArgs { threads: threads.try_into().unwrap() };
-                        protomine(args, key, base_url, unsecure_conn).await;
-                    },
-                    "  TurboMine" => {
-                        let threads: u32 = loop {
-                            let input = Text::new("  Enter the number of threads:")
-                                .with_default("4")
-                                .prompt()?;
-
-                            match input.trim().parse::<u32>() {
-                                Ok(valid_threads) if valid_threads > 0 => break valid_threads,
                                 _ => {
-                                    println!("  Invalid input. Please enter a valid number greater than 0.");
+                                    println!("  Invalid thread count. Please enter a number between 1 and {}.", max_threads);
                                 },
                             }
                         };
@@ -773,31 +736,31 @@ async fn run_command(
                         let args = TurboMineArgs { threads: threads.try_into().unwrap(), buffer };
                         turbomine(args, key, base_url, unsecure_conn).await;
                     },
-                    "  Sign up" => {
-                        let use_different_pubkey = Confirm::new("  Would you like to sign up a different pubkey than your selected keypair's pubkey?")
-                            .with_default(false)
-                            .prompt()?;
+                    // "  Sign up" => {
+                    //     let use_different_pubkey = Confirm::new("  Would you like to sign up a different pubkey than your selected keypair's pubkey?")
+                    //         .with_default(false)
+                    //         .prompt()?;
 
-                        let signup_args = if use_different_pubkey {
-                            // Prompt for the alternate pubkey
-                            let alt_pubkey = loop {
-                                let input = Text::new("  Enter the miner public key to sign up:")
-                                    .prompt()?;
-                                match Pubkey::from_str(&input.trim()) {
-                                    Ok(pk) => break pk.to_string(),
-                                    Err(_) => {
-                                        println!("  Invalid public key format. Please try again.");
-                                        continue;
-                                    },
-                                }
-                            };
-                            SignupArgs { pubkey: Some(alt_pubkey) }
-                        } else {
-                            SignupArgs { pubkey: None }
-                        };
+                    //     let signup_args = if use_different_pubkey {
+                    //         // Prompt for the alternate pubkey
+                    //         let alt_pubkey = loop {
+                    //             let input = Text::new("  Enter the miner public key to sign up:")
+                    //                 .prompt()?;
+                    //             match Pubkey::from_str(&input.trim()) {
+                    //                 Ok(pk) => break pk.to_string(),
+                    //                 Err(_) => {
+                    //                     println!("  Invalid public key format. Please try again.");
+                    //                     continue;
+                    //                 },
+                    //             }
+                    //         };
+                    //         SignupArgs { pubkey: Some(alt_pubkey) }
+                    //     } else {
+                    //         SignupArgs { pubkey: None }
+                    //     };
 
-                        signup(signup_args, base_url, key, unsecure_conn).await;
-                    },
+                    //     signup(signup_args, base_url, key, unsecure_conn).await;
+                    // },
                     "  Claim Rewards" => {
                         let use_separate_pubkey = Confirm::new(
                             "  Do you want to claim the rewards to a separate public key?",
@@ -817,113 +780,8 @@ async fn run_command(
                     "  View Balances" => {
                         balance(&key, base_url.clone(), unsecure_conn).await;
                         println!();
-                        earnings::earnings(); // Display earnings after balance
+                        earnings::earnings();
                     },
-                    // "  Stake" => {
-                    //     balance(&key, base_url.clone(), unsecure_conn).await;
-
-                    //     loop {
-                    //         let stake_input = Text::new(
-                    //             "  Enter the amount of ore to stake (or 'esc' to cancel):",
-                    //         )
-                    //         .prompt();
-
-                    //         match stake_input {
-                    //             Ok(input) => {
-                    //                 let input = input.trim();
-                    //                 if input.eq_ignore_ascii_case("esc") {
-                    //                     println!("  Staking operation canceled.");
-                    //                     break;
-                    //                 }
-
-                    //                 match input.parse::<f64>() {
-                    //                     Ok(stake_amount) if stake_amount > 0.0 => {
-                    //                         let args = delegate_stake::StakeArgs {
-                    //                             amount: stake_amount,
-                    //                             auto: true, // Auto-staking by default
-                    //                         };
-                    //                         delegate_stake::delegate_stake(
-                    //                             args,
-                    //                             key,
-                    //                             base_url.clone(),
-                    //                             unsecure_conn,
-                    //                         )
-                    //                         .await;
-                    //                         break;
-                    //                     },
-                    //                     Ok(_) => {
-                    //                         println!(
-                    //                             "  Please enter a valid number greater than 0."
-                    //                         );
-                    //                     },
-                    //                     Err(_) => {
-                    //                         println!("  Please enter a valid number.");
-                    //                     },
-                    //                 }
-                    //             },
-                    //             Err(inquire::error::InquireError::OperationCanceled) => {
-                    //                 println!("  Staking operation canceled.");
-                    //                 break;
-                    //             },
-                    //             Err(_) => {
-                    //                 println!("  Invalid input. Please try again.");
-                    //             },
-                    //         }
-                    //     }
-                    // },
-
-                    // "  Unstake" => {
-                    //     stake_balance::stake_balance(&key, base_url.clone(),
-                    // unsecure_conn).await;
-
-                    //     loop {
-                    //         let unstake_input = Text::new(
-                    //             "  Enter the amount of ore to unstake (or 'esc' to cancel):",
-                    //         )
-                    //         .prompt();
-
-                    //         match unstake_input {
-                    //             Ok(input) => {
-                    //                 let input = input.trim();
-                    //                 if input.eq_ignore_ascii_case("esc") {
-                    //                     println!("  Unstaking operation canceled.");
-                    //                     break;
-                    //                 }
-
-                    //                 match input.parse::<f64>() {
-                    //                     Ok(unstake_amount) if unstake_amount > 0.0 => {
-                    //                         let args = undelegate_stake::UnstakeArgs {
-                    //                             amount: unstake_amount,
-                    //                         };
-                    //                         undelegate_stake::undelegate_stake(
-                    //                             args,
-                    //                             &key,
-                    //                             base_url.clone(),
-                    //                             unsecure_conn,
-                    //                         )
-                    //                         .await;
-                    //                         break;
-                    //                     },
-                    //                     Ok(_) => {
-                    //                         println!(
-                    //                             "  Please enter a valid number greater than 0."
-                    //                         );
-                    //                     },
-                    //                     Err(_) => {
-                    //                         println!("  Please enter a valid number.");
-                    //                     },
-                    //                 }
-                    //             },
-                    //             Err(inquire::error::InquireError::OperationCanceled) => {
-                    //                 println!("  Unstaking operation canceled.");
-                    //                 break;
-                    //             },
-                    //             Err(_) => {
-                    //                 println!("  Invalid input. Please try again.");
-                    //             },
-                    //         }
-                    //     }
-                    // },
                     _ => println!("  Unknown selection."),
                 }
             }

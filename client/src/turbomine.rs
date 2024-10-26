@@ -2,6 +2,7 @@ use {
     crate::database::{Database, PoolSubmissionResult},
     base64::prelude::*,
     clap::{arg, Parser},
+    colored::*,
     drillx::equix,
     futures_util::{stream::SplitSink, SinkExt, StreamExt},
     indicatif::{ProgressBar, ProgressStyle},
@@ -47,17 +48,17 @@ const WS_IDLE_TIMEOUT: u64 = 180; // 3 mins
 
 #[derive(Debug)]
 pub struct ServerMessagePoolSubmissionResult {
-    difficulty: u32,
-    total_balance: f64,
-    total_rewards: f64,
-    top_stake: f64,
-    multiplier: f64,
-    active_miners: u32,
-    challenge: [u8; 32],
-    best_nonce: u64,
-    miner_supplied_difficulty: u32,
-    miner_earned_rewards: f64,
-    miner_percentage: f64,
+    pub difficulty: u32,
+    pub total_balance: f64,
+    pub total_rewards: f64,
+    pub top_stake: f64,
+    pub multiplier: f64,
+    pub active_miners: u32,
+    pub challenge: [u8; 32],
+    pub best_nonce: u64,
+    pub miner_supplied_difficulty: u32,
+    pub miner_earned_rewards: f64,
+    pub miner_percentage: f64,
 }
 
 impl ServerMessagePoolSubmissionResult {
@@ -194,8 +195,8 @@ pub enum ServerMessage {
 
 #[derive(Debug, Clone, Copy)]
 pub struct ThreadSubmission {
-    nonce: u64,
-    difficulty: u32,
+    pub nonce: u64,
+    pub difficulty: u32,
     pub d: [u8; 16], // digest
 }
 
@@ -258,18 +259,9 @@ pub async fn turbomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
 
     let key = Arc::new(key);
 
-    // let mut threads = args.threads;
-    // let max_threads = core_affinity::get_core_ids().unwrap().len();
-    // if threads > max_threads {
-    //     println!(
-    //         "Arg --threads {} exceeds max available cores({}), the exceeding part will be ignored.",
-    //         threads, max_threads
-    //     );
-
-    //     threads = max_threads;
-    // }
-
     loop {
+        let connection_started = Instant::now();
+
         if !running.load(Ordering::SeqCst) {
             break;
         }
@@ -343,7 +335,12 @@ pub async fn turbomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
 
         match connect_async(request).await {
             Ok((ws_stream, _)) => {
-                println!("Connected to network!");
+                println!(
+                    "{}{}{}",
+                    "Server: ".dimmed(),
+                    format!("Connected to network!").blue(),
+                    format!(" [{}ms]", connection_started.elapsed().as_millis()).dimmed(),
+                );
 
                 let (sender, mut receiver) = ws_stream.split();
                 let (message_sender, mut message_receiver) =
@@ -504,6 +501,7 @@ pub async fn turbomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
                                     pb.set_message("Mining...");
                                     pb.enable_steady_tick(Duration::from_millis(120));
 
+                                    let stop_thread = Arc::new(AtomicBool::new(false));
                                     let hash_timer = Instant::now();
 
                                     // let r = running.clone();
@@ -519,6 +517,7 @@ pub async fn turbomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
                                         threads,
                                         processor_submission_sender.clone(),
                                         running,
+                                        stop_thread,
                                     );
 
                                     let hash_time = hash_timer.elapsed();
@@ -587,18 +586,18 @@ pub async fn turbomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
                                     let _ = db_sender.send(ps);
 
                                     let message = format!(
-                                        "\n\nChallenge: {}\nPool Submitted Difficulty: {}\nPool Earned:  {:.11} ORE\nPool Balance: {:.11} ORE\nTop Stake:    {:.11} ORE\nPool Multiplier: {:.2}x\n----------------------\nActive Miners: {}\n----------------------\nMiner Submitted Difficulty: {}\nMiner Earned: {:.11} ORE\n{:.2}% of total pool reward\n",
+                                        "\n\nChallenge: {}\nPool Submitted Difficulty: {}\nPool Earned:  {:.11} ORE\nPool Balance: {:.11} ORE\nPool Natural Multiplier: {:.2}x\n----------------------\nActive Miners: {}\n----------------------\nMiner Submitted Difficulty: {}\nMiner Earned: {:.11} ORE\n{:.4}% of total pool reward\n",
                                         BASE64_STANDARD.encode(data.challenge),
                                         data.difficulty,
                                         data.total_rewards,
                                         data.total_balance,
-                                        data.top_stake,
                                         data.multiplier,
                                         data.active_miners,
                                         data.miner_supplied_difficulty,
                                         data.miner_earned_rewards,
                                         data.miner_percentage
                                     );
+                                    let _ = data.top_stake;
                                     let _ = data.best_nonce;
                                     println!("{}", message);
                                 },
@@ -778,6 +777,7 @@ fn optimized_mining_rayon(
     threads: usize,
     submission_sender: Arc<UnboundedSender<MessageSubmissionProcessor>>,
     running: Arc<AtomicBool>,
+    stop_thread: Arc<AtomicBool>,
 ) -> (u64, u32, drillx::Hash, u64) {
     let processor_submission_sender = submission_sender.clone();
     let stop_signal = Arc::new(AtomicBool::new(false));
@@ -810,6 +810,7 @@ fn optimized_mining_rayon(
 
             'outer: for chunk_start in (core_start..core_end).step_by(chunk_size as usize) {
                 let chunk_end = (chunk_start + chunk_size).min(core_end);
+                let stop_me = stop_thread.clone();
                 for nonce in chunk_start..chunk_end {
                     // if start_time.elapsed().as_secs() >= cutoff_time {
                     //     break 'outer;
@@ -822,6 +823,10 @@ fn optimized_mining_rayon(
                     // Check if Ctrl+C was pressed
                     if !running.load(Ordering::SeqCst) {
                         break 'outer;
+                    }
+
+                    if stop_me.load(Ordering::Relaxed) {
+                        break; // for nonce loop
                     }
 
                     for hx in
@@ -839,9 +844,10 @@ fn optimized_mining_rayon(
                             if let Err(_) = processor_submission_sender
                                 .send(MessageSubmissionProcessor::Submission(thread_submission))
                             {
-                                eprintln!(
-                                    "Failed to send found hash to internal submission processor"
-                                );
+                                // eprintln!(
+                                //     "Failed to send found hash to internal submission processor"
+                                // );
+                                stop_me.store(true, Ordering::Relaxed);
                             }
 
                             core_best_difficulty.store(difficulty, Ordering::Relaxed);

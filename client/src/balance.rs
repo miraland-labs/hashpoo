@@ -6,7 +6,9 @@ pub async fn balance(key: &Keypair, url: String, unsecure: bool) {
 
     let url_prefix = if unsecure { "http".to_string() } else { "https".to_string() };
 
-    // Fetch Wallet (Stakable) Balance
+    println!("Wallet: {}", key.pubkey().to_string());
+
+    // Fetch Wallet (Stakeable) Balance
     let balance_response = client
         .get(format!(
             "{}://{}/v1/miner/balance?pubkey={}",
@@ -67,6 +69,8 @@ pub async fn balance(key: &Keypair, url: String, unsecure: bool) {
     // } else {
     //     stake_response.parse::<f64>().unwrap_or(0.0)
     // };
+
+    println!();
     println!("  Unclaimed Rewards: {:.11} ORE", rewards);
     println!("  Wallet Balance: {:.11} ORE", balance);
     // println!("  Staked Balance:    {:.11} ORE", staked_balance);

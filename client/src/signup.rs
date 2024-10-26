@@ -15,7 +15,7 @@ pub struct SignupArgs {
     pub pubkey: Option<String>,
 }
 
-pub async fn signup(args: SignupArgs, url: String, key: Keypair, unsecure: bool) {
+pub async fn _signup(args: SignupArgs, url: String, key: Keypair, unsecure: bool) {
     let miner_pubkey = if args.pubkey.is_some() {
         match Pubkey::from_str(&args.pubkey.unwrap()) {
             Ok(pk) => pk,

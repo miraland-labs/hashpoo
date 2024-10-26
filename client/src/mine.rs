@@ -2,6 +2,7 @@ use {
     crate::database::{Database, PoolSubmissionResult},
     base64::prelude::*,
     clap::{arg, Parser},
+    colored::*,
     drillx::equix,
     futures_util::{stream::SplitSink, SinkExt, StreamExt},
     indicatif::{ProgressBar, ProgressStyle},
@@ -40,17 +41,17 @@ const WS_IDLE_TIMEOUT: u64 = 180; // 3 mins
 
 #[derive(Debug)]
 pub struct ServerMessagePoolSubmissionResult {
-    difficulty: u32,
-    total_balance: f64,
-    total_rewards: f64,
-    top_stake: f64,
-    multiplier: f64,
-    active_miners: u32,
-    challenge: [u8; 32],
-    best_nonce: u64,
-    miner_supplied_difficulty: u32,
-    miner_earned_rewards: f64,
-    miner_percentage: f64,
+    pub difficulty: u32,
+    pub total_balance: f64,
+    pub total_rewards: f64,
+    pub top_stake: f64,
+    pub multiplier: f64,
+    pub active_miners: u32,
+    pub challenge: [u8; 32],
+    pub best_nonce: u64,
+    pub miner_supplied_difficulty: u32,
+    pub miner_earned_rewards: f64,
+    pub miner_percentage: f64,
 }
 
 impl ServerMessagePoolSubmissionResult {
@@ -187,8 +188,8 @@ pub enum ServerMessage {
 
 #[derive(Debug, Clone, Copy)]
 pub struct ThreadSubmission {
-    nonce: u64,
-    difficulty: u32,
+    pub nonce: u64,
+    pub difficulty: u32,
     pub d: [u8; 16], // digest
 }
 
@@ -232,6 +233,8 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
     let key = Arc::new(key);
 
     loop {
+        let connection_started = Instant::now();
+
         if !running.load(Ordering::SeqCst) {
             break;
         }
@@ -305,27 +308,16 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
 
         match connect_async(request).await {
             Ok((ws_stream, _)) => {
-                println!("Connected to network!");
+                println!(
+                    "{}{}{}",
+                    "Server: ".dimmed(),
+                    format!("Connected to network!").blue(),
+                    format!(" [{}ms]", connection_started.elapsed().as_millis()).dimmed(),
+                );
 
                 let (sender, mut receiver) = ws_stream.split();
                 let (message_sender, mut message_receiver) =
                     tokio::sync::mpsc::unbounded_channel::<ServerMessage>();
-
-                // let receiver_thread = tokio::spawn(async move {
-                //     loop {
-                //         if let Some(Ok(message)) = receiver.next().await {
-                //             if process_message(message, message_sender.clone()).is_break() {
-                //                 break;
-                //             }
-                //         } else {
-                //             // receiver got None, the stream ended.
-                //             // None is returned when the sender half has dropped, indicating that
-                // no further values can be received.             eprintln!("The
-                // sender half has been dropped. No more messages will be received. Exit the
-                // loop.");             break; // exit loop
-                //         }
-                //     }
-                // });
 
                 let (solution_processor_message_sender, solution_processor_message_receiver) =
                     tokio::sync::mpsc::unbounded_channel::<MessageSubmissionProcessor>();
@@ -482,6 +474,7 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                     pb.enable_steady_tick(Duration::from_millis(120));
 
                                     // Original mining code
+                                    let stop = Arc::new(AtomicBool::new(false));
                                     let hash_timer = Instant::now();
                                     let core_ids = core_affinity::get_core_ids().unwrap();
                                     // let max_cores =
@@ -502,6 +495,7 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                             let running = running.clone(); // Capture running in thread
                                             let processor_submission_sender =
                                                 processor_submission_sender.clone();
+                                            let stop_me = stop.clone();
                                             std::thread::spawn({
                                                 let mut memory = equix::SolverMemory::new();
                                                 move || {
@@ -525,6 +519,10 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                                             return None;
                                                         }
 
+                                                        if stop_me.load(Ordering::Relaxed) {
+                                                            break;
+                                                        }
+
                                                         // Create hash
                                                         for hx in drillx::hashes_with_memory(
                                                             &mut memory,
@@ -545,7 +543,8 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                                                         thread_submission,
                                                                     ),
                                                                 ) {
-                                                                    eprintln!("Failed to send found hash to internal submission processor");
+                                                                    // eprintln!("Failed to send found hash to internal submission processor.");
+                                                                    stop_me.store(true, Ordering::Relaxed);
                                                                 }
                                                                 best_nonce = nonce;
                                                                 best_difficulty = difficulty;
@@ -697,18 +696,18 @@ pub async fn mine(args: MineArgs, key: Keypair, url: String, unsecure: bool) {
                                     let _ = db_sender.send(ps);
 
                                     let message = format!(
-                                        "\n\nChallenge: {}\nPool Submitted Difficulty: {}\nPool Earned:  {:.11} ORE\nPool Balance: {:.11} ORE\nTop Stake:    {:.11} ORE\nPool Multiplier: {:.2}x\n----------------------\nActive Miners: {}\n----------------------\nMiner Submitted Difficulty: {}\nMiner Earned: {:.11} ORE\n{:.2}% of total pool reward\n",
+                                        "\n\nChallenge: {}\nPool Submitted Difficulty: {}\nPool Earned:  {:.11} ORE\nPool Balance: {:.11} ORE\nPool Natural Multiplier: {:.2}x\n----------------------\nActive Miners: {}\n----------------------\nMiner Submitted Difficulty: {}\nMiner Earned: {:.11} ORE\n{:.4}% of total pool reward\n",
                                         BASE64_STANDARD.encode(data.challenge),
                                         data.difficulty,
                                         data.total_rewards,
                                         data.total_balance,
-                                        data.top_stake,
                                         data.multiplier,
                                         data.active_miners,
                                         data.miner_supplied_difficulty,
                                         data.miner_earned_rewards,
                                         data.miner_percentage
                                     );
+                                    let _ = data.top_stake;
                                     let _ = data.best_nonce;
                                     println!("{}", message);
                                 },
