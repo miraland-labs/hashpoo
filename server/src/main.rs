@@ -45,7 +45,7 @@ use {
     serde::Deserialize,
     solana_client::nonblocking::rpc_client::RpcClient,
     solana_sdk::{
-        commitment_config::CommitmentConfig,
+        commitment_config::{CommitmentConfig, CommitmentLevel},
         native_token::{lamports_to_sol, LAMPORTS_PER_SOL},
         pubkey::Pubkey,
         signature::{read_keypair_file, Keypair, Signature},
@@ -73,8 +73,8 @@ use {
     tracing::{debug, error, info, warn},
     tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer},
     utils::{
-        get_config, get_mini_pool_proof, get_ore_mint, get_proof, get_register_ix,
-        mini_pool_proof_pubkey, ORE_TOKEN_DECIMALS,
+        get_mini_pool_proof, get_ore_mint, get_proof, get_register_ix, mini_pool_proof_pubkey,
+        ORE_TOKEN_DECIMALS,
     },
 };
 
@@ -1049,7 +1049,12 @@ async fn get_pool_fee_payer_pubkey(
 async fn get_latest_blockhash(
     Extension(rpc_client): Extension<Arc<RpcClient>>,
 ) -> impl IntoResponse {
-    let latest_blockhash = rpc_client.get_latest_blockhash().await.unwrap();
+    let latest_blockhash = rpc_client
+        .get_latest_blockhash_with_commitment(CommitmentConfig {
+            commitment: CommitmentLevel::Finalized,
+        })
+        .await
+        .unwrap();
 
     let serialized_blockhash = bincode::serialize(&latest_blockhash).unwrap();
 
@@ -1283,25 +1288,31 @@ async fn get_miner_balance(
     }
 }
 
+// MI: legacy stake multiplier is sunset
+// it's now a constant (1.0)
 async fn get_stake_multiplier(
-    Extension(rpc_client): Extension<Arc<RpcClient>>,
+    Extension(_rpc_client): Extension<Arc<RpcClient>>,
     Extension(mine_config): Extension<Arc<MineConfig>>,
 ) -> impl IntoResponse {
     if mine_config.stats_enabled {
-        let proof_pubkey = mini_pool_proof_pubkey(*WALLET_PUBKEY.get().unwrap());
-        let proof = if let Ok(loaded_proof) = get_proof(&rpc_client, proof_pubkey).await {
-            loaded_proof
-        } else {
-            error!(target: "server_log", "Failed to load mini pool proof.");
-            return Err("Failed to load mini pool proof.".to_string());
-        };
+        // MI: code before sunset of legacy stake multiplier
+        // let proof_pubkey = mini_pool_proof_pubkey(*WALLET_PUBKEY.get().unwrap());
+        // let proof = if let Ok(loaded_proof) = get_proof(&rpc_client, proof_pubkey).await {
+        //     loaded_proof
+        // } else {
+        //     error!(target: "server_log", "Failed to load mini pool proof.");
+        //     return Err("Failed to load mini pool proof.".to_string());
+        // };
 
-        if let Ok(config) = get_config(&rpc_client).await {
-            let multiplier = 1.0 + (proof.balance as f64 / config.top_balance as f64).min(1.0f64);
-            return Ok(Json(multiplier));
-        } else {
-            return Err("Failed to get ore config account".to_string());
-        }
+        // if let Ok(config) = get_config(&rpc_client).await {
+        //     let multiplier = 1.0 + (proof.balance as f64 / config.top_balance as f64).min(1.0f64);
+        //     return Ok(Json(multiplier));
+        // } else {
+        //     return Err("Failed to get ore config account".to_string());
+        // }
+
+        let multiplier = 1.0;
+        return Ok(Json(multiplier));
     } else {
         return Err("Stats not enabled for this server.".to_string());
     }

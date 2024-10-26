@@ -146,7 +146,7 @@ SELECT
         &self,
         pubkey: String,
     ) -> Result<Vec<Contribution>, DatabaseError> {
-        let sql = "SELECT s.* FROM contributions s JOIN miners m ON s.miner_id = m.id WHERE m.pubkey = $1 ORDER BY s.created DESC LIMIT 100";
+        let sql = "SELECT s.* FROM contributions s JOIN miners m ON s.miner_id = m.id WHERE m.pubkey = $1 ORDER BY s.id DESC LIMIT 100";
 
         if let Ok(db_conn) = self.get_connection().await {
             let stmt = db_conn.prepare_cached(sql).await.unwrap();

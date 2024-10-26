@@ -64,7 +64,8 @@ pub fn get_ore_mint() -> Pubkey {
     MINT_ADDRESS
 }
 
-pub async fn get_config(client: &RpcClient) -> Result<ore_api::state::Config, String> {
+// MI: used in legacy multiplier calc. which is sunset now
+pub async fn _get_config(client: &RpcClient) -> Result<ore_api::state::Config, String> {
     loop {
         let data = client.get_account_data(&CONFIG_ADDRESS).await;
         match data {
