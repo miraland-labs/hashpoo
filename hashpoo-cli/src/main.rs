@@ -39,8 +39,8 @@ struct Args {
     #[arg(
         long,
         value_name = "SERVER_URL",
-        help = "URL of your pool server to connect to, it can also be your LAN ip address:port like: 172.xxx.xx.xxx:3000, 192.xxx.xx.xxx:3000",
-        default_value = "poolore.miraland.io"
+        help = "URL of the hashpoo server to connect to",
+        default_value = "hashpoo.miraland.io"
     )]
     url: String,
 
@@ -72,9 +72,9 @@ enum Commands {
     // Signup(SignupArgs),
     #[command(about = "Claim rewards.")]
     Claim(ClaimArgs),
-    #[command(about = "Display current ore token balance.")]
+    #[command(about = "Display current ORE token balance.")]
     Balance,
-    #[command(about = "Generate a new solana keypair for mining.")]
+    #[command(about = "Generate a new Solana keypair for mining.")]
     Keygen,
     #[command(about = "Displays locally tracked earnings.")]
     Earnings,
@@ -87,7 +87,7 @@ async fn main() {
     // Ensure the URL is set to the default if not provided
     let mut args = args;
     if args.url.is_empty() {
-        args.url = "poolore.miraland.io".to_string();
+        args.url = "hashpoo.miraland.io".to_string();
     }
 
     // Does the config file exist? If not, create one
@@ -549,7 +549,7 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
     let selection = match &args.command {
         Some(_) => None,
         None => match Select::new(
-            &format!("Welcome to Poolore Client v{}, what would you like to do?", version),
+            &format!("Welcome to Hashpoo CLI v{}, what would you like to do?", version),
             options,
         )
         .with_page_size(12)
@@ -586,11 +586,11 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let base_url = if args.url == "poolore.miraland.io" {
+    let base_url = if args.url == "hashpoo.miraland.io" {
         let url_input = Text::new("  Please enter the server URL:")
-            .with_default("poolore.miraland.io")
+            .with_default("hashpoo.miraland.io")
             .prompt()
-            .unwrap_or_else(|_| "poolore.miraland.io".to_string());
+            .unwrap_or_else(|_| "hashpoo.miraland.io".to_string());
         url_input
     } else {
         args.url.clone()
@@ -793,7 +793,7 @@ async fn run_command(
 
 async fn is_update_available() -> Result<bool, Box<dyn std::error::Error>> {
     let current_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
-    let latest_version_str = get_latest_crate_version("poolore-cli").await?;
+    let latest_version_str = get_latest_crate_version("hashpoo-cli").await?;
     let latest_version = Version::parse(&latest_version_str)?;
 
     Ok(current_version < latest_version)
@@ -801,7 +801,7 @@ async fn is_update_available() -> Result<bool, Box<dyn std::error::Error>> {
 
 async fn update_client() -> Result<(), Box<dyn std::error::Error>> {
     let current_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
-    let latest_version_str = get_latest_crate_version("poolore-cli").await?;
+    let latest_version_str = get_latest_crate_version("hashpoo-cli").await?;
     let latest_version = Version::parse(&latest_version_str)?;
 
     if current_version < latest_version {
@@ -811,7 +811,7 @@ async fn update_client() -> Result<(), Box<dyn std::error::Error>> {
 
         if confirm_update {
             println!("  Updating to version {}...", latest_version);
-            let status = Command::new("cargo").arg("install").arg("poolore-cli").status()?;
+            let status = Command::new("cargo").arg("install").arg("hashpoo-cli").status()?;
             if status.success() {
                 println!("  Update completed successfully.");
                 println!("  Please restart the application to use the updated version.");
@@ -831,7 +831,7 @@ async fn update_client() -> Result<(), Box<dyn std::error::Error>> {
 async fn get_latest_crate_version(crate_name: &str) -> Result<String, Box<dyn std::error::Error>> {
     let url = format!("https://crates.io/api/v1/crates/{}", crate_name);
     let client = reqwest::Client::new();
-    let resp = client.get(&url).header("User-Agent", "poolore-cli").send().await?;
+    let resp = client.get(&url).header("User-Agent", "hashpoo-cli").send().await?;
 
     if resp.status().is_success() {
         let json: serde_json::Value = resp.json().await?;

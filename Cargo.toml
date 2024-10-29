@@ -3,7 +3,7 @@ resolver = "2"
 members = ["hashpoo-cli", "hashpoo"]
 
 [workspace.package]
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["hashpooler <hashpooler@miraland.io>"]
@@ -80,6 +80,7 @@ solana-transaction-status = "1.18.12"
 spl-associated-token-account = { version = "2.3", features = ["no-entrypoint"] }
 spl-token = { version = "4", features = ["no-entrypoint"] }
 static_assertions = "1.1.0"
+steel = "2.1.1"
 thiserror = "1.0.57"
 tiny-bip39 = "0.8.2"
 tokio = { version = "1.39.2", features = ["full", "rt-multi-thread"] }

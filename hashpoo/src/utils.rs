@@ -1,4 +1,5 @@
 pub use ore_utils::AccountDeserialize;
+pub use steel::AccountDeserialize as _;
 use {
     cached::proc_macro::cached,
     drillx::Solution,

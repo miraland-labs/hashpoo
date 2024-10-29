@@ -175,11 +175,11 @@ Your support is greatly appreciated. It motivates me/us to keep improving this p
 **Bitcoin(BTC)**
 `bc1plh7wnl0v0xfemmk395tvsu73jtt0s8l28lhhznafzrj5jwu4dy9qx2rpda`
 
-![Donate BTC to Miraland Development](donations/donate-btc-qr-code.png)
+![Donate BTC to Miraland Development](../donations/donate-btc-qr-code.png)
 
 **Solana(SOL)**
 `9h9TXFtSsDAiL5kpCRZuKUxPE4Nv3W56fcSyUC3zmQip`
 
-![Donate SOL to Miraland Development](donations/donate-sol-qr-code.png)
+![Donate SOL to Miraland Development](../donations/donate-sol-qr-code.png)
 
 Thank you for your support!
