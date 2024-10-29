@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-# Start ore mining public pool server
+# Start Hashpoo ore mining public pool server
 
 set -e
 
-SRV=$HOME/miner/poolore/target/release/poolores
+SRV=$HOME/miner/hashpoo/target/release/hps
 
 # MKP="$HOME/.config/solana/id.json"
 
@@ -33,6 +33,6 @@ CMD="$SRV \
 
 echo "$CMD"
 until bash -c "$CMD"; do
-    echo "Starting server command failed. Restart..."
+    echo "Starting Hashpoo server command failed. Restart..."
     sleep 2
 done

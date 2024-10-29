@@ -1,16 +1,16 @@
-# Poolore - Easy and Simplified Public Pool for ORE Mining
+# Hashpoo - Hashpower pool only, for PoW believers. Simple and easy public pool dedicated to ORE mining, pure PoW, no staking no boosting.
 
 **The goal of this project is to bring more consumer miners on board through easy and simple ORE mining operations, in line with the ORE design principle: anyone can mine.**
 
-**This is Poolore client, originated from [ore-private-pool-cli](https://github.com/miraland-labs/ore-private-pool-cli.git) which derived from [ore-hq-client](https://github.com/Kriptikz/ore-hq-client.git).**
+**This is Hashpoo server.**
 
-## Key Differentiators of Poolore
-
-**Fully embrace and leverage ORE program**
+## Key Differentiators of Hashpoo
 
 **No sign up fee, no sign up action**
 
-**No delegating operation, no manual staking**
+**Hashpoo does NOT cap or limit your hashpower in any way.**
+
+**No delegating, no staking, no boosting, pure PoW**
 
 **Start mining when you connect. Stop mining when you disconnect.**
 
@@ -18,19 +18,19 @@
 
 **Suitable for both casual and professional miners**
 
-Poolorer(Poolore community member) are welcome to join discord server:
+Hashpoo community members(Hashpunkers) are welcome to join discord server:
 
 -   [Mirapoo Discord](https://discord.gg/YjQhWqxp7H)
 
 ## Install
 
-Poolore client(poolore-cli) installation steps:
+Hashpoo client(hashpoo-cli) installation steps:
 
 ```sh
-cargo install poolore-cli
+cargo install hashpoo-cli
 ```
 
-Source code located at Github: [github](https://github.com/miraland-labs/poolore)
+Source code located at Github: [github](https://github.com/miraland-labs/hashpoo)
 
 ### Dependencies
 
@@ -75,16 +75,16 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 ## Run
 
-To run poolore client, execute:
+To run hashpoo client, execute:
 
 ```sh
-poolorec [OPTIONS]
+hpc [OPTIONS]
 ```
 
-or, if you can reference command scripts example file under [poolore github](https://github.com/miraland-labs/poolore)
+or, if you can reference command scripts example file under [hashpoo github](https://github.com/miraland-labs/hashpoo)
 
 ```sh
-scripts/start-poolore-cli.sh
+scripts/hpc.sh
 ```
 
 ## Help
@@ -92,9 +92,9 @@ scripts/start-poolore-cli.sh
 You can use the `-h` flag on any command to pull up a help menu with documentation:
 
 ```sh
-poolorec -h
+hpc -h
 
-Usage: poolorec [OPTIONS] <COMMAND>
+Usage: hpc [OPTIONS] <COMMAND>
 
 Commands:
   mine       Connect to pool and start mining. (Default Implementation)

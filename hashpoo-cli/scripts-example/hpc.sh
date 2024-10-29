@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-# Start poolore client
+# Start hashpoo client
 
 set -e
 
-CLI=$HOME/miner/poolore/target/release/poolorec
+CLI=$HOME/miner/hashpoo/target/release/hpc
 
 MKP="$HOME/.config/solana/id.json"
 
@@ -12,12 +12,12 @@ THREADS=8
 
 CMD="$CLI \
         --use-http \
-        --url poolore.miraland.io \
+        --url hashpoo.miraland.io \
         --keypair $MKP \
         mine --threads $THREADS"
 
 echo "$CMD"
 until bash -c "$CMD"; do
-    echo "Starting client command failed. Restart..."
+    echo "Starting Hashpoo client command failed. Restart..."
     sleep 2
 done

@@ -1,6 +1,6 @@
 [package]
-name = "poolore-cli"
-description = "ORE mining public pool client."
+name = "hashpoo-cli"
+description = "Hashpower pool only, for PoW believers. Public pool dedicated to ORE mining."
 documentation = { workspace = true }
 version = { workspace = true }
 authors = { workspace = true }
@@ -11,7 +11,7 @@ edition = { workspace = true }
 readme = "./README.md"
 
 [[bin]]
-name = "poolorec"
+name = "hpc"
 path = "src/main.rs"
 
 [dependencies]

@@ -11,7 +11,8 @@ Possible log types:
 -   `[fixed]` for any bug fixes.
 -   `[security]` to invite users to upgrade in case of vulnerabilities.
 
-### v0.5.0 (2024-10-10)
+### v0.8.0 (2024-10-30)
 
 -   [added] Initial release since forked.
--   [removed] Deps about signup and delegate program, etc.
+-   [changed] README
+-   [removed] Delegate, stake, etc.

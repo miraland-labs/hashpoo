@@ -1,6 +1,6 @@
 [package]
-name = "poolore-srv"
-description = "ORE mining public pool server."
+name = "hashpoo"
+description = "Hashpower pool only, for PoW believers. Public pool dedicated to ORE mining."
 documentation = { workspace = true }
 version = { workspace = true }
 authors = { workspace = true }
@@ -11,7 +11,7 @@ edition = { workspace = true }
 readme = "./README.md"
 
 [[bin]]
-name = "poolores"
+name = "hps"
 path = "src/main.rs"
 
 [features]

@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use crate::{
     utils, AppState, ClientMessage, EpochHashes, InternalMessageContribution, LastPong,
     HASHPOWER_CAP, MIN_DIFF, UNIT_HASHPOWER,
@@ -18,7 +19,7 @@ use {
         sync::{mpsc::UnboundedReceiver, Mutex, RwLock},
         time::Instant,
     },
-    tracing::{error, info, warn},
+    tracing::{debug, error, info, warn},
     uuid::Uuid,
 };
 
@@ -102,18 +103,18 @@ pub async fn client_message_processor(
                         if solution.is_valid(&challenge) {
                             let diff = solution.to_hash().difficulty();
                             let contribution_uuid = Uuid::new_v4();
-                            info!(target: "server_log",
-                                "{} - Client {} with pubkey {} found diff: {} at {}",
-                                contribution_uuid,
+                            debug!(target: "server_log", "{contribution_uuid} : ");
+                            debug!(target: "server_log",
+                                "Client {} with pubkey {} found diff: {} at {}",
                                 addr.to_string(),
                                 // pubkey_str,
                                 short_pbukey_str,
                                 diff,
                                 Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
                             );
+                            info!(target: "contribution_log", "{contribution_uuid} : ");
                             info!(target: "contribution_log",
-                                "{} - Client {} with pubkey {} found diff: {} at {}",
-                                contribution_uuid,
+                                "Client {} with pubkey {} found diff: {} at {}",
                                 addr.to_string(),
                                 // pubkey_str,
                                 short_pbukey_str,
@@ -124,20 +125,20 @@ pub async fn client_message_processor(
                             if diff >= min_difficulty {
                                 // calculate rewards, only diff larger than min_difficulty(rather
                                 // than MIN_DIFF) qualifies rewards calc.
-                                // let mut hashpower = MIN_HASHPOWER * 2u64.pow(diff - MIN_DIFF);
-                                // if hashpower > 81_920 {
-                                //     hashpower = 81_920;
-                                // }
-                                // if hashpower > 655_360 {
-                                //     hashpower = 655_360;
-                                // }
 
-                                // let hashpower = 2u64.pow(diff);
+                                // let hashpower = utils::normalized_hashpower(
+                                //     UNIT_HASHPOWER,
+                                //     MIN_DIFF,
+                                //     diff,
+                                //     Some(HASHPOWER_CAP),
+                                // );
+
+                                // MI: For hashpoo, no cap limit for hashpower, like natural selection in the wild
                                 let hashpower = utils::normalized_hashpower(
                                     UNIT_HASHPOWER,
                                     MIN_DIFF,
                                     diff,
-                                    Some(HASHPOWER_CAP),
+                                    None, // No hashpower cap
                                 );
 
                                 {
@@ -170,7 +171,8 @@ pub async fn client_message_processor(
                                             info!(target: "server_log", "Miner submitted lower diff than a previous contribution, discarding lower diff");
                                         }
                                     } else {
-                                        info!(target: "contribution_log", "{} - Adding {} contribution diff: {} to epoch_hashes contributions.", contribution_uuid, pubkey_str, diff);
+                                        info!(target: "contribution_log", "{} : ", contribution_uuid);
+                                        info!(target: "contribution_log", "Adding {} contribution diff: {} to epoch_hashes contributions.", pubkey_str, diff);
                                         let mut epoch_hashes = epoch_hashes.write().await;
                                         epoch_hashes.contributions.insert(
                                             pubkey,

@@ -1,17 +1,17 @@
 [workspace]
 resolver = "2"
-members = ["client", "server"]
+members = ["hashpoo-cli", "hashpoo"]
 
 [workspace.package]
-version = "0.6.0"
+version = "0.8.0"
 edition = "2021"
 license = "Apache-2.0"
-authors = ["poolorer <poolorer@unknown.xyz>"]
-repository = "https://github.com/miraland-labs/poolore"
-description = "ORE mining public pool. Forked from ore-private-pool-srv which derived from ore-hq-server."
+authors = ["hashpooler <hashpooler@miraland.io>"]
+repository = "https://github.com/miraland-labs/hashpoo"
+description = "Hashpower pool only, for PoW believers. Forked from poolore which ultimately derived from ore-hq-server."
 documentation = "https://ore.supply"
 homepage = "https://ore.supply"
-keywords = ["solana", "crypto", "ore", "poolore", "mining-pool"]
+keywords = ["solana", "miraland", "ore", "hashpoo", "mining-pool"]
 
 [workspace.dependencies]
 array-const-fn-init = "0.1.1"

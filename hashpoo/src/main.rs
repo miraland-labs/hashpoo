@@ -106,6 +106,7 @@ mod utils;
 // 28       268,435,456	       1,048,576
 // 29       536,870,912	       2,097,152
 // 30       1,073,741,824      4,194,304
+#[allow(dead_code)]
 const HASHPOWER_CAP: u64 = 32_768; // map to diff 23
 const MIN_DIFF: u32 = 8; // corresponds to current ORE program config
 const UNIT_HASHPOWER: u64 = 1;
@@ -415,7 +416,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let env_filter_layer = tracing_subscriber::EnvFilter::try_from_default_env()
     //     .or_else(|_| tracing_subscriber::EnvFilter::try_new("info"))
     //     .unwrap();
-    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+    let env_filter_stdout = tracing_subscriber::EnvFilter::try_from_default_env()
         .or_else(|_| tracing_subscriber::EnvFilter::try_new("info"))
         .unwrap();
 
@@ -423,23 +424,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stdout_log_layer = tracing_subscriber::fmt::layer()
         .compact()
         // .pretty()
-        .with_filter(env_filter)
+        .with_filter(env_filter_stdout)
         .with_filter(tracing_subscriber::filter::filter_fn(|metadata| {
             metadata.target() == "server_log"
         }));
 
-    // MI: complete layer definition
-    let server_logs = tracing_appender::rolling::daily("./logs", "poolores.log");
-    let (server_logs, _guard) = tracing_appender::non_blocking(server_logs);
-    let server_log_layer = tracing_subscriber::fmt::layer().with_writer(server_logs).with_filter(
-        tracing_subscriber::filter::filter_fn(|metadata| metadata.target() == "server_log"),
-    );
+    let env_filter_srvlog = tracing_subscriber::EnvFilter::try_from_default_env()
+        .or_else(|_| tracing_subscriber::EnvFilter::try_new("trace"))
+        .unwrap();
 
+    // MI: complete layer definition
+    let server_logs = tracing_appender::rolling::daily("./logs", "hashpoo.log");
+    let (server_logs, _guard) = tracing_appender::non_blocking(server_logs);
+    let server_log_layer = tracing_subscriber::fmt::layer()
+        .with_writer(server_logs)
+        .with_filter(env_filter_srvlog)
+        .with_filter(tracing_subscriber::filter::filter_fn(|metadata| {
+            metadata.target() == "server_log"
+        }));
+
+    let env_filter_conlog = tracing_subscriber::EnvFilter::try_from_default_env()
+        .or_else(|_| tracing_subscriber::EnvFilter::try_new("trace"))
+        .unwrap();
     // MI: complete layer definition
     let contribution_logs = tracing_appender::rolling::daily("./logs", "contributions.log");
     let (contribution_logs, _guard) = tracing_appender::non_blocking(contribution_logs);
     let contribution_log_layer = tracing_subscriber::fmt::layer()
         .with_writer(contribution_logs)
+        .with_filter(env_filter_conlog)
         .with_filter(tracing_subscriber::filter::filter_fn(|metadata| {
             metadata.target() == "contribution_log"
         }));

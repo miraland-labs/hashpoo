@@ -1,16 +1,16 @@
-# Poolore - Easy and Simplified Public Pool for ORE Mining
+# Hashpoo - Hashpower pool only, for PoW believers. Simple and easy public pool dedicated to ORE mining, pure PoW, no staking no boosting.
 
 **The goal of this project is to bring more consumer miners on board through easy and simple ORE mining operations, in line with the ORE design principle: anyone can mine.**
 
-**This is Poolore server. Forked from [ore-private-pool-srv](https://github.com/miraland-labs/ore-private-pool-srv.git) which derived from [ore-hq-server](https://github.com/Kriptikz/ore-hq-server.git).**
+**This is Hashpoo server.**
 
-## Key Differentiators of Poolore
-
-**Fully embrace and leverage ORE program**
+## Key Differentiators of Hashpoo
 
 **No sign up fee, no sign up action**
 
-**No delegating operation, no manual staking**
+**Hashpoo does NOT cap or limit your hashpower in any way.**
+
+**No delegating, no staking, no boosting, pure PoW**
 
 **Start mining when you connect. Stop mining when you disconnect.**
 
@@ -18,26 +18,26 @@
 
 **Suitable for both casual and professional miners**
 
-Poolorer(Poolore community member) are welcome to join discord server:
+Hashpoo community members(Hashpunkers) are welcome to join discord server:
 
 -   [Mirapoo Discord](https://discord.gg/YjQhWqxp7H)
 
 ## Install
 
-Poolore server(poolore-srv) installation steps:
+Hashpoo server(Hashpoo) installation steps:
 
-To install the private pool server, 2 approaches are recommended:
+To install the Hashpoo pool server, 2 approaches are recommended:
 
 **Approach One**: install from crates.io directly, use [cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html):
 
 ```sh
-cargo install poolore-srv
+cargo install hashpoo
 ```
 
-**Approach Two**: download source code from Github at: [github](https://github.com/miraland-labs/poolore):
+**Approach Two**: download source code from Github at: [github](https://github.com/miraland-labs/hashpoo):
 
 ```sh
-https://github.com/miraland-labs/poolore
+https://github.com/miraland-labs/hashpoo
 ```
 
 and then compile locally
@@ -107,35 +107,35 @@ Navigate to server sub directory, copy `.env.example` file and rename to `.env`,
 
 ## Run
 
-To run pool server, execute:
+To run hashpoo server, execute:
 
 ```sh
-poolores [OPTIONS]
+hps [OPTIONS]
 ```
 
 or, if you build from source code downloaded from github, enter into server sub directory,
-duplicate `scripts.example` directory and rename to `scripts`, modify settings in `start-poolore-srv.sh`, execute:
+duplicate `scripts.example` directory and rename to `scripts`, modify settings in `hps.sh`, execute:
 
 ```
-./start-poolore-srv.sh
+./hps.sh
 ```
 
 or
 
 ```
-RUST_LOG=info ./start-poolore-srv.sh
+RUST_LOG=info ./hps.sh
 ```
 
-There are 2 types of daily log files in the `logs' subdirectory. One type is server_log with the filename pattern poolores.log.yyyy-mm-dd, the other type is contribution_log with the filename pattern contributions.log.yyyy-mm-dd. By default, the server log with filtered content is redirected to standard output or the terminal.
+There are 2 types of daily log files in the `logs' subdirectory. One type is server_log with the filename pattern hashpoo.log.yyyy-mm-dd, the other type is contribution_log with the filename pattern contributions.log.yyyy-mm-dd. By default, the server log with filtered content is redirected to standard output or the terminal.
 
 ## Help
 
 You can use the `-h` flag on any command to pull up a help menu with documentation:
 
 ```sh
-poolores -h
+hps -h
 
-Usage: poolores [OPTIONS]
+Usage: hps [OPTIONS]
 
 Options:
 -b, --buffer-time <BUFFER_SECONDS>
