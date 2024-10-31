@@ -40,7 +40,7 @@ struct Args {
         long,
         value_name = "SERVER_URL",
         help = "URL of the hashpoo server to connect to",
-        default_value = "hashpoo.miraland.io"
+        default_value = "ore.hashspace.me"
     )]
     url: String,
 
@@ -87,7 +87,7 @@ async fn main() {
     // Ensure the URL is set to the default if not provided
     let mut args = args;
     if args.url.is_empty() {
-        args.url = "hashpoo.miraland.io".to_string();
+        args.url = "ore.hashspace.me".to_string();
     }
 
     // Does the config file exist? If not, create one
@@ -586,11 +586,11 @@ async fn run_menu(vim_mode: bool) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let base_url = if args.url == "hashpoo.miraland.io" {
+    let base_url = if args.url == "ore.hashspace.me" {
         let url_input = Text::new("  Please enter the server URL:")
-            .with_default("hashpoo.miraland.io")
+            .with_default("ore.hashspace.me")
             .prompt()
-            .unwrap_or_else(|_| "hashpoo.miraland.io".to_string());
+            .unwrap_or_else(|_| "ore.hashspace.me".to_string());
         url_input
     } else {
         args.url.clone()

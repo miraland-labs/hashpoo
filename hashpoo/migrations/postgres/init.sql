@@ -1,32 +1,6 @@
 /*
-    db initialization
-     sudo -i -u postgres
-     psql
-     or
-    sudo -i -u postgres psql
-
-    CREATE ROLE miracle LOGIN CREATEDB CREATEROLE;
-    ALTER USER miracle WITH PASSWORD 'Mirascape';
-    psql postgres -U miracle;
-    OR
-    psql -U miracle -h localhost -d postgres
-
-    CREATE DATABASE miraland;
-    or
-    createdb miraland --owner miracle
-
-    up.sql
-    GRANT ALL ON SCHEMA ore TO <other_user>;
-
-    DATABASE_URL=postgres://username:password@localhost/mydb
+-- Create database tables
 */
-
--- CREATE DATABASE miraland;
-/*
-DROP SCHEMA IF EXISTS hashpoo;
-CREATE SCHEMA IF NOT EXISTS hashpoo AUTHORIZATION miracle;
-*/
-
 
 DROP TRIGGER IF EXISTS update_timestamp_trigger ON miners CASCADE;
 DROP TRIGGER IF EXISTS update_timestamp_trigger ON pools CASCADE;
@@ -99,39 +73,6 @@ FOR EACH ROW
 EXECUTE FUNCTION update_timestamp();
 
 CREATE UNIQUE INDEX uniq_miners_pubkey ON miners (pubkey ASC);
-
-
-/*
-    id - primary key, auto created index
-    PostgreSQL automatically creates a unique index when a unique constraint or primary key is defined for a table.
-    user index naming convention(with prefix):
-    pkey_: primary key
-    ukey_: user key
-    fkey_: foreign key
-    uniq_: unique index
-    indx_: other index (multiple values)
-
-    status: Enrolled, Activated, Frozen, Deactivated
-*/
--- CREATE TABLE members (
---     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY
---         (START WITH 1000 INCREMENT BY 1),
---     pubkey VARCHAR(44) NOT NULL,
---     enabled BOOLEAN DEFAULT false NOT NULL,
---     role_miner BOOLEAN DEFAULT false NOT NULL,
---     role_operator BOOLEAN DEFAULT false NOT NULL,
---     status VARCHAR(30) DEFAULT 'Enrolled' NOT NULL,
---     created TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
---     updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
--- );
-
--- CREATE OR REPLACE TRIGGER update_timestamp_trigger
--- BEFORE UPDATE ON members
--- FOR EACH ROW
--- EXECUTE FUNCTION update_timestamp();
-
--- CREATE UNIQUE INDEX uniq_members_pubkey ON members (pubkey ASC);
-
 
 /*
     id - primary key, auto created index

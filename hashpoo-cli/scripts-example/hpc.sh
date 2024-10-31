@@ -12,7 +12,7 @@ THREADS=8
 
 CMD="$CLI \
         --use-http \
-        --url hashpoo.miraland.io \
+        --url ore.hashspace.me \
         --keypair $MKP \
         mine --threads $THREADS"
 

@@ -102,7 +102,7 @@ Commands:
   help       Print this message or the help of the given subcommand(s)
 
 Options:
-      --url <SERVER_URL>        Host name and port of your private pool server to connect to, it can also be your LAN ip address:port like: 172.xxx.xx.xxx:3000, 192.xxx.xx.xxx:3000 [default: orepool.miraland.io:3000]
+      --url <SERVER_URL>        Host name and port of your private pool server to connect to, it can also be your LAN ip address:port like: 172.xxx.xx.xxx:3000, 192.xxx.xx.xxx:3000 [default: ore.hashspace.me]
       --keypair <KEYPAIR_PATH>  Filepath to keypair to use [default: ~/.config/solana/id.json]
   -u, --use-http                Use unsecure http connection instead of https.
 ```
