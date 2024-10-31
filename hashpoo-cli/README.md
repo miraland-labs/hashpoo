@@ -1,22 +1,24 @@
-# Hashpoo - Hashpower pool only, for PoW believers. Simple and easy public pool dedicated to ORE mining, pure PoW, no staking no boosting.
+# Hashpoo: Hashing, once started, cannot be stopped at all. (Experimental)
+
+## Hashpoo - for real hashpower only, specifically tailored for PoW believers and/or hashpower paranoids. It's a public oriented, simple and easy to join pool dedicated to ORE mining. It features pure PoW, no staking, no boosting, absolutely compelled by the real and physical hashpower of the entire community. Have fun.
 
 **The goal of this project is to bring more consumer miners on board through easy and simple ORE mining operations, in line with the ORE design principle: anyone can mine.**
 
-**This is Hashpoo server.**
+**This is Hashpoo client.**
 
 ## Key Differentiators of Hashpoo
 
-**No sign up fee, no sign up action**
+**No sign up fee, no sign up action.**
 
 **Hashpoo does NOT cap or limit your hashpower in any way.**
 
-**No delegating, no staking, no boosting, pure PoW**
+**No delegating, no staking, no boosting, pure PoW, only hashpower.**
 
 **Start mining when you connect. Stop mining when you disconnect.**
 
 **Claim anytime at your own discretion (with reward balance >= 0.005 ORE).**
 
-**Suitable for both casual and professional miners**
+**Suitable for both casual and professional miners.**
 
 Hashpoo community members(Hashpunkers) are welcome to join discord server:
 
@@ -24,7 +26,7 @@ Hashpoo community members(Hashpunkers) are welcome to join discord server:
 
 ## Install
 
-Hashpoo client(hashpoo-cli) installation steps:
+Hashpoo client(hashpoo-cli) can be installed from crates.io directly, use [cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html):
 
 ```sh
 cargo install hashpoo-cli
@@ -81,7 +83,7 @@ To run hashpoo client, execute:
 hpc [OPTIONS]
 ```
 
-or, if you can reference command scripts example file under [hashpoo github](https://github.com/miraland-labs/hashpoo)
+or, if you reference command scripts example file under [hashpoo github](https://github.com/miraland-labs/hashpoo)
 
 ```sh
 scripts/hpc.sh
@@ -94,17 +96,24 @@ You can use the `-h` flag on any command to pull up a help menu with documentati
 ```sh
 hpc -h
 
-Usage: hpc [OPTIONS] <COMMAND>
+Usage: hpc [OPTIONS] [COMMAND]
 
 Commands:
-  mine       Connect to pool and start mining. (Default Implementation)
-  protomine  Connect to pool and start mining. (Protomine Implementation)
+  mine       Connect to pool and start mining. (Default Impl.)
+  turbomine  Connect to pool and start mining. (Turbomine Impl.)
+  claim      Claim rewards.
+  balance    Display current ORE token balance.
+  keygen     Generate a new Solana keypair for mining.
+  earnings   Displays locally tracked earnings.
   help       Print this message or the help of the given subcommand(s)
 
 Options:
-      --url <SERVER_URL>        Host name and port of your private pool server to connect to, it can also be your LAN ip address:port like: 172.xxx.xx.xxx:3000, 192.xxx.xx.xxx:3000 [default: ore.hashspace.me]
+      --url <SERVER_URL>        URL of the hashpoo server to connect to [default: ore.hashspace.me]
       --keypair <KEYPAIR_PATH>  Filepath to keypair to use [default: ~/.config/solana/id.json]
   -u, --use-http                Use unsecure http connection instead of https.
+  -v, --vim                     Use vim mode for menu navigation.
+  -h, --help                    Print help
+  -V, --version                 Print version
 ```
 
 ## Support us | Donate at your discretion
