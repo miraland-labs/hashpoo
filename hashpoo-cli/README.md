@@ -4,7 +4,7 @@
 
 **The goal of this project is to bring more consumer miners on board through easy and simple ORE mining operations, in line with the ORE design principle: anyone can mine.**
 
-**This is Hashpoo client.**
+**This is Hashpoo client, for any miner or anyone.**
 
 ## Key Differentiators of Hashpoo
 
@@ -77,17 +77,29 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 ## Run
 
-To run hashpoo client, execute:
+**Interactive mode and direct mode**
+
+To run Hashpoo client in interactive mode, execute:
 
 ```sh
 hpc [OPTIONS]
 ```
 
+To run Hashpoo client in direct mode, execute, for example:
+
+````sh
+$ hpc --url ore.hashspace.me --keypair path-to-your-keypair.json mine --threads 8
+```sh
+or
+```sh
+$ hpc --url ore.hashspace.me --keypair path-to-your-keypair.json turbomine --threads 8
+```sh
+
 or, if you reference command scripts example file under [hashpoo github](https://github.com/miraland-labs/hashpoo)
 
 ```sh
 scripts/hpc.sh
-```
+````
 
 ## Help
 
