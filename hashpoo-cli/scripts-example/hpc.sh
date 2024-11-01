@@ -11,7 +11,6 @@ MKP="$HOME/.config/solana/id.json"
 THREADS=8
 
 CMD="$CLI \
-        --use-http \
         --url ore.hashspace.me \
         --keypair $MKP \
         mine --threads $THREADS"

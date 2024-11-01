@@ -224,6 +224,9 @@ pub struct MineArgs {
         help = "Buffer time in seconds, to send the submission to the server earlier"
     )]
     pub buffer: u32,
+
+    #[arg(long, short, action, help = "wrap ctrl-c singal or not. Handle ctrl-c by default.")]
+    pub no_ctrlc: bool,
 }
 
 struct MiningResult {
@@ -252,10 +255,12 @@ pub async fn turbomine(args: MineArgs, key: Keypair, url: String, unsecure: bool
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
 
-    ctrlc::set_handler(move || {
-        r.store(false, Ordering::SeqCst);
-    })
-    .expect("Error setting Ctrl-C handler");
+    if !args.no_ctrlc {
+        ctrlc::set_handler(move || {
+            r.store(false, Ordering::SeqCst);
+        })
+        .expect("Error setting Ctrl-C handler");
+    }
 
     let key = Arc::new(key);
 

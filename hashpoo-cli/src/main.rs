@@ -688,7 +688,7 @@ async fn run_command(
                             }
                         };
 
-                        let args = MineArgs { threads, buffer };
+                        let args = MineArgs { threads, buffer, no_ctrlc: false };
                         mine(args, key, base_url, unsecure_conn).await;
                     },
                     "  Turbo Mine" => {
@@ -733,7 +733,11 @@ async fn run_command(
                             }
                         };
 
-                        let args = TurboMineArgs { threads: threads.try_into().unwrap(), buffer };
+                        let args = TurboMineArgs {
+                            threads: threads.try_into().unwrap(),
+                            buffer,
+                            no_ctrlc: false,
+                        };
                         turbomine(args, key, base_url, unsecure_conn).await;
                     },
                     // "  Sign up" => {
