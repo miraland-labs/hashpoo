@@ -87,19 +87,21 @@ hpc [OPTIONS]
 
 To run Hashpoo client in direct mode, execute, for example:
 
-````sh
-$ hpc --url ore.hashspace.me --keypair path-to-your-keypair.json mine --threads 8
 ```sh
+$ hpc --url ore.hashspace.me --keypair path-to-your-keypair.json mine --threads 8
+```
+
 or
+
 ```sh
 $ hpc --url ore.hashspace.me --keypair path-to-your-keypair.json turbomine --threads 8
-```sh
+```
 
 or, if you reference command scripts example file under [hashpoo github](https://github.com/miraland-labs/hashpoo)
 
 ```sh
 scripts/hpc.sh
-````
+```
 
 ## Help
 

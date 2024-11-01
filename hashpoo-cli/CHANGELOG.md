@@ -11,6 +11,10 @@ Possible log types:
 -   `[fixed]` for any bug fixes.
 -   `[security]` to invite users to upgrade in case of vulnerabilities.
 
+### v0.8.4 (2024-11-01)
+
+-   [changed] README
+
 ### v0.8.3 (2024-11-01)
 
 -   [changed] README
