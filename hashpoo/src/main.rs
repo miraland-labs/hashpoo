@@ -116,8 +116,10 @@ const UNIT_HASHPOWER: u64 = 1;
 // const MIN_HASHPOWER: u64 = 5;
 
 // 0.00500000000 ORE
-const MIN_CLAIM_AMOUNT: u64 = 500_000_000; // grains
-                                           // const MIN_CLAIM_AMOUNT: u64 = 1_000_000; // for test
+const MIN_CLAIM_AMOUNT_NOT_EXISTS_ATA: u64 = 500_000_000; // grains
+
+// 0.0000500000000 ORE
+const MIN_CLAIM_AMOUNT_EXISTS_ATA: u64 = 5_000_000; // grains
 
 // 0.00400000000 ORE
 const CREATE_ATA_DEDUCTION: u64 = 400_000_000; // grains
@@ -1394,6 +1396,7 @@ struct ClaimParams {
 
 async fn post_claim(
     TypedHeader(auth_header): TypedHeader<axum_extra::headers::Authorization<Basic>>,
+    Extension(rpc_client): Extension<Arc<RpcClient>>,
     Extension(database): Extension<Arc<Database>>,
     Extension(claims_queue): Extension<Arc<ClaimsQueue>>,
     query_params: Query<ClaimParams>,
@@ -1436,13 +1439,36 @@ async fn post_claim(
                 let amount = query_params.amount;
 
                 // 0.00500000000 ORE
-                // if amount < 500_000_000 {
-                if amount < MIN_CLAIM_AMOUNT {
-                    let min_claim_amount_dec: f64 =
-                        (MIN_CLAIM_AMOUNT as f64) / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
+                let ore_mint = get_ore_mint();
+                let receiver_token_account =
+                    get_associated_token_address(&receiver_pubkey, &ore_mint);
+                let mut is_creating_ata = true;
+                if let Ok(response) =
+                    rpc_client.get_token_account_balance(&receiver_token_account).await
+                {
+                    if let Some(_amount) = response.ui_amount {
+                        info!(target: "server_log", "Claim recipient already has a valid token account.");
+                        is_creating_ata = false;
+                    }
+                }
+
+                // if amount < 5_000_000 (0.00005000000 ORE)
+                if amount < MIN_CLAIM_AMOUNT_EXISTS_ATA {
+                    let min_claim_amount_dec: f64 = (MIN_CLAIM_AMOUNT_EXISTS_ATA as f64)
+                        / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
                     return Err((
                         StatusCode::BAD_REQUEST,
-                        format!("claim minimum is {min_claim_amount_dec} ORE"),
+                        format!("The claim minimum is {min_claim_amount_dec} ORE even if you have alreay a valid token account."),
+                    ));
+                }
+
+                // if amount < 500_000_000 (0.005000000 ORE)
+                if is_creating_ata && amount < MIN_CLAIM_AMOUNT_NOT_EXISTS_ATA {
+                    let min_claim_amount_dec: f64 = (MIN_CLAIM_AMOUNT_NOT_EXISTS_ATA as f64)
+                        / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
+                    return Err((
+                        StatusCode::BAD_REQUEST,
+                        format!("Since no valid token account already exists, the claim minimum is {min_claim_amount_dec} ORE"),
                     ));
                 }
 
