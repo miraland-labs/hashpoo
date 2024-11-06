@@ -2360,7 +2360,7 @@ dependencies = [
 
 [[package]]
 name = "hashpoo"
-version = "0.8.5"
+version = "0.8.6"
 dependencies = [
  "axum",
  "axum-extra",
@@ -2415,7 +2415,7 @@ dependencies = [
 
 [[package]]
 name = "hashpoo-cli"
-version = "0.8.5"
+version = "0.8.6"
 dependencies = [
  "base64 0.22.1",
  "bincode",

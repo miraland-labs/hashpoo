@@ -732,6 +732,7 @@ pub async fn pool_submission_processor<'a>(
 
                                     // Rewards processing step III: send internal mine success message for challenge of rewares earned.
                                     let mut total_hashpower: u64 = 0;
+                                    let num_contributors: u32 = contributions.len() as u32;
 
                                     for contribution in contributions.iter() {
                                         total_hashpower += contribution.1.hashpower;
@@ -787,6 +788,7 @@ pub async fn pool_submission_processor<'a>(
                                                     difficulty,
                                                     dec_pool_rewards,
                                                     balance,
+                                                    num_contributors,
                                                 ));
                                         }
 
@@ -796,6 +798,7 @@ pub async fn pool_submission_processor<'a>(
                                                     difficulty,
                                                     dec_pool_rewards,
                                                     balance,
+                                                    num_contributors,
                                                 ),
                                             );
                                         }

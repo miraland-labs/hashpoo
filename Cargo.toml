@@ -3,7 +3,7 @@ resolver = "2"
 members = ["hashpoo-cli", "hashpoo"]
 
 [workspace.package]
-version = "0.8.5"
+version = "0.8.6"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["hashpooler <hashpooler@miraland.io>"]

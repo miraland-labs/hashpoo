@@ -9,8 +9,8 @@ use {
 
 #[derive(Debug)]
 pub enum RewardsMessage {
-    // Rewards(/* difficulty: */ u32, /* rewards: */ f64, /* balance: */ f64),
-    Rewards(u32, f64, f64),
+    // Rewards(/* difficulty: */ u32, /* rewards: */ f64, /* balance: */ f64, /* num_contributors: */ u32),
+    Rewards(u32, f64, f64, u32),
 }
 
 #[derive(Debug)]
@@ -47,8 +47,9 @@ pub(crate) async fn slack_messaging_processor(
     loop {
         while let Some(slack_message) = receiver_channel.recv().await {
             match slack_message {
-                RewardsMessage::Rewards(d, r, b) =>
-                    slack_messaging(slack_webhook.clone(), SrcType::Pool, d, r, b).await,
+                RewardsMessage::Rewards(d, r, b, c) => {
+                    slack_messaging(slack_webhook.clone(), SrcType::Pool, d, r, b, c).await
+                },
             }
         }
     }
@@ -61,8 +62,9 @@ pub(crate) async fn discord_messaging_processor(
     loop {
         while let Some(discord_message) = receiver_channel.recv().await {
             match discord_message {
-                RewardsMessage::Rewards(d, r, b) =>
-                    discord_messaging(discord_webhook.clone(), SrcType::Pool, d, r, b).await,
+                RewardsMessage::Rewards(d, r, b, c) => {
+                    discord_messaging(discord_webhook.clone(), SrcType::Pool, d, r, b, c).await
+                },
             }
         }
     }
@@ -74,8 +76,12 @@ async fn slack_messaging(
     difficulty: u32,
     rewards: f64,
     balance: f64,
+    num_contributors: u32,
 ) {
-    let text = format!("S: {}\nD: {}\nR: {}\nB: {}", source, difficulty, rewards, balance);
+    let text = format!(
+        "S: {}\nD: {}\nR: {}\nB: {}\nM: {}",
+        source, difficulty, rewards, balance, num_contributors
+    );
     let slack_webhook_url =
         url::Url::parse(&slack_webhook).expect("Failed to parse slack webhook url");
     let message = SlackChannelMessage::builder().text(text).build();
@@ -105,8 +111,12 @@ async fn discord_messaging(
     difficulty: u32,
     rewards: f64,
     balance: f64,
+    num_contributors: u32,
 ) {
-    let text = format!("S: {}\nD: {}\nR: {}\nB: {}", source, difficulty, rewards, balance);
+    let text = format!(
+        "S: {}\nD: {}\nR: {}\nB: {}\nM: {}",
+        source, difficulty, rewards, balance, num_contributors
+    );
     // You don't need a token when you are only dealing with webhooks.
     let http = Http::new("");
     let discord_webhook = Webhook::from_url(&http, &discord_webhook)
