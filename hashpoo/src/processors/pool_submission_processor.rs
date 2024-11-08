@@ -788,6 +788,7 @@ pub async fn pool_submission_processor<'a>(
                                                     difficulty,
                                                     dec_pool_rewards,
                                                     balance,
+                                                    num_active_miners as u32,
                                                     num_contributors,
                                                 ));
                                         }
@@ -798,6 +799,7 @@ pub async fn pool_submission_processor<'a>(
                                                     difficulty,
                                                     dec_pool_rewards,
                                                     balance,
+                                                    num_active_miners as u32,
                                                     num_contributors,
                                                 ),
                                             );
