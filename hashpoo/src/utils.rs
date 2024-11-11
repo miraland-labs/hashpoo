@@ -294,7 +294,11 @@ pub async fn get_clock(client: &RpcClient) -> Clock {
 // MI: use on-chain clock time without risk time version
 pub async fn get_cutoff(rpc_client: &RpcClient, proof: Proof, buffer_time: u64) -> i64 {
     let clock = get_clock(rpc_client).await;
-    proof.last_hash_at + 60 as i64 - buffer_time as i64 - clock.unix_timestamp
+    if clock.unix_timestamp > proof.last_hash_at {
+        proof.last_hash_at + 60 as i64 - buffer_time as i64 - clock.unix_timestamp
+    } else {
+        60 as i64 - buffer_time as i64
+    }
 }
 
 // MI: use on-chain clock time with risk time(default 0) version
@@ -305,7 +309,13 @@ pub async fn get_cutoff_with_risk(
     risk_time: u64,
 ) -> i64 {
     let clock = get_clock(rpc_client).await;
-    proof.last_hash_at + 60 as i64 + risk_time as i64 - buffer_time as i64 - clock.unix_timestamp
+    if clock.unix_timestamp > proof.last_hash_at {
+        proof.last_hash_at + 60 as i64 + risk_time as i64
+            - buffer_time as i64
+            - clock.unix_timestamp
+    } else {
+        60 as i64 + risk_time as i64 - buffer_time as i64
+    }
 }
 
 // MI
