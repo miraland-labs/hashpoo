@@ -1,5 +1,7 @@
-#[cfg(feature = "powered-by-dbms-postgres")] pub mod claim_processor;
+#[cfg(feature = "powered-by-dbms-postgres")]
+pub mod claim_processor;
 
+pub mod client_contributions_processor;
 pub mod client_message_processor;
 pub mod messaging_all_clients_processor;
 pub mod ping_check_processor;

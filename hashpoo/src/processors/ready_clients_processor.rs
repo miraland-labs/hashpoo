@@ -70,7 +70,8 @@ pub async fn ready_clients_processor(
             };
 
             if should_mine {
-                tracing::info!(target: "server_log", "Processing {} ready clients.", clients.len());
+                let num_clients = clients.len();
+                tracing::info!(target: "server_log", "Processing {} ready clients.", num_clients);
                 let lock = app_proof.lock().await;
                 let proof = lock.clone();
                 drop(lock);
@@ -79,6 +80,9 @@ pub async fn ready_clients_processor(
                 info!(target: "contribution_log", "Mission to clients with challenge: {}", BASE64_STANDARD.encode(challenge));
                 info!(target: "server_log", "and cutoff in: {}s", cutoff);
                 info!(target: "contribution_log", "and cutoff in: {}s", cutoff);
+                let shared_state = shared_state.read().await;
+                let sockets = shared_state.sockets.clone();
+                drop(shared_state);
                 for client in clients {
                     let nonce_range = {
                         let mut nonce = app_nonce.lock().await;
@@ -99,9 +103,9 @@ pub async fn ready_clients_processor(
                     );
 
                     let client_nonce_ranges = client_nonce_ranges.clone();
-                    let shared_state = shared_state.read().await;
-                    let sockets = shared_state.sockets.clone();
-                    drop(shared_state);
+                    // let shared_state = shared_state.read().await;
+                    // let sockets = shared_state.sockets.clone();
+                    // drop(shared_state);
                     if let Some(sender) = sockets.get(&client) {
                         let sender = sender.clone();
                         tokio::spawn(async move {
@@ -122,6 +126,7 @@ pub async fn ready_clients_processor(
                     // remove ready client from list
                     let _ = ready_clients.lock().await.remove(&client);
                 }
+                tracing::info!(target: "server_log", "Processed {} ready clients.", num_clients);
             }
         }
         tokio::time::sleep(Duration::from_secs(1)).await;
