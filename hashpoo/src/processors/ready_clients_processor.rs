@@ -21,6 +21,8 @@ use {
     tracing::{error, info},
 };
 
+const NONCE_RANGE_SIZE: u64 = 40_000_000;
+
 pub async fn ready_clients_processor(
     rpc_client: Arc<RpcClient>,
     shared_state: Arc<RwLock<AppState>>,
@@ -88,9 +90,10 @@ pub async fn ready_clients_processor(
                         let mut nonce = app_nonce.lock().await;
                         let start = *nonce;
                         // suppose max hashes possible in 60s for a single client
-                        *nonce += 4_000_000;
+                        // *nonce += 4_000_000;
+                        *nonce += NONCE_RANGE_SIZE;
                         drop(nonce);
-                        let nonce_end = start + 4_000_000;
+                        let nonce_end = start + NONCE_RANGE_SIZE;
                         let end = nonce_end;
                         start..end
                     };

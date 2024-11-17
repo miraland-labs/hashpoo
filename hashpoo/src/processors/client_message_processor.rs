@@ -57,6 +57,7 @@ pub async fn client_message_processor(
                     drop(writer);
                 },
                 ClientMessage::Ready(addr) => {
+                    // info!(target: "server_log", "Client {} is ready for mission!", addr.to_string());
                     let ready_clients = ready_clients.clone();
                     let mut lock = ready_clients.lock().await;
                     lock.insert(addr);
