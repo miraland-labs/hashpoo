@@ -118,8 +118,10 @@ const UNIT_HASHPOWER: u64 = 1;
 // 0.00500000000 ORE
 const MIN_CLAIM_AMOUNT_NOT_EXISTS_ATA: u64 = 500_000_000; // grains
 
-// 0.0000500000000 ORE
-const MIN_CLAIM_AMOUNT_EXISTS_ATA: u64 = 5_000_000; // grains
+// For Future: 0.0000500000000 ORE
+// const MIN_CLAIM_AMOUNT_EXISTS_ATA: u64 = 5_000_000; // grains
+// For Now: 0.00500000000 ORE
+const MIN_CLAIM_AMOUNT_EXISTS_ATA: u64 = 500_000_000; // grains
 
 // 0.00400000000 ORE
 const CREATE_ATA_DEDUCTION: u64 = 400_000_000; // grains
@@ -1452,7 +1454,7 @@ async fn post_claim(
                     }
                 }
 
-                // if amount < 5_000_000 (0.00005000000 ORE)
+                // For Future: if amount < 5_000_000 (0.00005000000 ORE)
                 if amount < MIN_CLAIM_AMOUNT_EXISTS_ATA {
                     let min_claim_amount_dec: f64 = (MIN_CLAIM_AMOUNT_EXISTS_ATA as f64)
                         / 10f64.powf(ORE_TOKEN_DECIMALS as f64);
